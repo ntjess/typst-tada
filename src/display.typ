@@ -93,6 +93,10 @@
 
 
 #let _value-to-display(value, value-info, row) = {
+  if value == none {
+    // TODO: Allow customizing `none` representation
+    return value
+  }
   let display-func = value-info.at("display", default: auto)
   if type(display-func) == str {
     value = eval(
