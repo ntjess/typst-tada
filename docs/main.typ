@@ -199,7 +199,9 @@ Rows can also be selected by whether they fulfill a field condition:
 = Operations
 
 == Expressions
-The easiest way to leverage TaDa's flexibility is through string expression. But *note*! you must `collect` before showing a table to ensure all expressions are computed:
+The easiest way to leverage TaDa's flexibility is through expressions. They can be strings that treat field names as variables, or functions that take keyword-only arguments.
+  - *Note*! you must `collect` before showing a table to ensure all expressions are computed:
+- *Note*! When passing functions, every field is passed as a named argument to the function. So, make sure to capture unused fields with `..rest` (the name is unimportant) to avoid errors.
 
 ```example
 #let td = with-field(
@@ -214,7 +216,8 @@ The easiest way to leverage TaDa's flexibility is through string expression. But
 #let taxed = with-field(
   td,
   "Tax",
-  expression: "total * 0.2",
+  // Expressions can be functions, too
+  expression: (total: none, ..rest) => total * 0.2,
   title: fmt("Tax"),
   type: "currency",
 )

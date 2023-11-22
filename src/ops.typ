@@ -151,8 +151,17 @@
         }
       }
       let expr = field-info.at(key).at("expression")
-      let mode = field-info.at(key).at("mode", default: "code")
-      let value = eval(expr, scope: scope, mode: mode)
+      let value = none
+      if type(expr) == str {
+        let mode = field-info.at(key).at("mode", default: "code")
+        value = eval(expr, scope: scope, mode: mode)
+      } else {
+        assert(
+          type(expr) == function,
+          message: "expression must be a string or function, got: " + type(expr)
+        )
+        value = expr(..scope)
+      }
       row.insert(key, value)
     }
     processed-rows.push(row)
