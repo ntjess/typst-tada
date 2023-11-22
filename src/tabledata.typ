@@ -1,7 +1,13 @@
 #import "helpers.typ": *
 #import "display.typ": display
 
-#let TableData(rows: (), field-info: (:), tablex-kwargs: (:), ..unused) = {
+#let TableData(
+  rows: (),
+  field-info: (:),
+  tablex-kwargs: (:),
+  add-row-fields: false,
+  ..unused
+) = {
   let types = rows.map(el => type(el)).dedup()
   if types.len() > 0 and types != (dictionary,) {
     panic("Row data must be a list of dictionaries, got types" + repr(types))
@@ -15,6 +21,13 @@
     }
     row
   })
+  if add-row-fields {
+    for field in unique-row-keys(rows) {
+      if field not in field-info {
+        field-info.insert(field, (:))
+      }
+    }
+  }
 
   (
     rows: rows,
@@ -23,6 +36,10 @@
     tablex-kwargs: tablex-kwargs,
   )
 
+}
+
+#let with-row-fields(td) = {
+  TableData(..td, add-row-fields: true)
 }
 
 #let table-data-from-columns(..columns-and-metadata) = {
