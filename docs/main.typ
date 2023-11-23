@@ -18,7 +18,13 @@
   }
 }
 
-#let fmt = heading.with(outlined: false)
+#let inline-code(content) = box(
+  radius: 0.25em,
+  fill: white.darken(3%),
+  inset: 0.25em,
+  baseline: 0.25em,
+  content,
+)
 
 #set text(font: "Linux Libertine")
 #let normal-show(content) = {
@@ -35,7 +41,6 @@
       lib: lib,
       direction: ltr,
       output: output,
-      fmt: fmt,
     )
   })
 }
@@ -57,10 +62,12 @@ Key features include:
 - *Data representation*: Handle displaying currencies, floats, integers, and more
   with ease and arbitrary customization
 
+
 = Table manipulation
 TaDa provides two main ways to construct tables -- from columns and from rows:
 
 == Hello world
+_Note: This and all following examples wrap  rendered content in #inline-code[`#output[...]`] blocks. This is purely a helper function for the documentation, and is *not required* in your own code._
 ```example
 #let column-data = (
   name: ("Bread", "Milk", "Eggs"),
@@ -94,6 +101,8 @@ TaDa will automatically add an `__index` field to each row. This is useful for s
 == Title formatting
 You can pass any `content` as a field's `title`. *Note*: if you pass a string, it will be evaluated as markup.
 ```example
+#let fmt = heading.with(outlined: false)
+
 #let titles = (
   name: (title: fmt("Name")),
   price: (title: fmt("Price")),
@@ -152,16 +161,18 @@ If your type is not available or you want to customize its display, pass a `disp
 ```
 
 === `align` etc.
-You can pass any other keywords accepted in the `tablex` constructor such as `align`, `fill`, `width`, etc.:
+You can pass `align` and `width` to a given field's metadata to determine how content aligns in the cell and how much horizontal space it takes up. In the future, more `tablex` setup arguments will be accepted.
 
 ```example
+#let adjusted = td
+#adjusted.field-info.at("name").insert("align", center)
+#adjusted.field-info.at("name").insert("width", 1fr)
 #output[
-  #td.field-info.at("name").insert("fill", red)
-  #TableData(..td).table
+  #TableData(..adjusted).table
 ]
 ```
 
-== `tablex` customization
+== Deeper `tablex` customization
 TaDa uses `tablex` to display the table. So any argument that `tablex` accepts can be
 passed to TableData as well:
 
