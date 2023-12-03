@@ -110,6 +110,10 @@
   value
 }
 
+#let title-case(field) = field.replace("-", " ").split(" ").map(
+  word => upper(word.at(0)) + word.slice(1)
+).join(" ")
+
 
 #let _field-info-to-tablex-kwargs(field-info) = {
   let get-eval(dict, key, default) = {
@@ -125,9 +129,14 @@
   let (names, aligns, widths) = ((), (), ())
   for (key, info) in field-info.pairs() {
     if "title" in info {
+      let original-field = key
       key = info.at("title")
       if type(key) == str {
-        key = eval(key, mode: "markup")
+        key = eval(
+          key,
+          mode: "markup",
+          scope: (field: original-field, title-case-field: title-case(original-field))
+        )
       }
     }
     names.push(key)
