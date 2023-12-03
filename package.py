@@ -35,7 +35,9 @@ def create_package(
     upload_folder.joinpath("typst.toml").write_text(toml_text)
     for path in map(Path, PACKAGE_PATHS):
         if path.is_dir():
-            shutil.copytree(here.joinpath(path), upload_folder.joinpath(path))
+            shutil.copytree(
+                here.joinpath(path), upload_folder.joinpath(path), dirs_exist_ok=True
+            )
         else:
             shutil.copy(here.joinpath(path), upload_folder.joinpath(path))
     return upload_folder
@@ -54,7 +56,7 @@ if "__main__" == __name__:
     parser.add_argument("--typst-packages-folder", default=default_packages_folder)
     args = parser.parse_args()
 
-    with open(args.toml) as ifile:
+    with open(args.toml, "rb") as ifile:
         toml_text = tomli.load(ifile)  # type: ignore
     version = toml_text["package"]["version"]
     package_name = toml_text["package"]["name"]
