@@ -3,19 +3,14 @@
 
 #set page(height: auto, margin: 0.2in, fill: white)
 #let example-blocks = state("example-blocks", ())
-#let output-counter = counter("output")
 
-#let output(content, step: true) = {
+#let output-on-final(current-idx, content) = {
   locate(loc => {
-    let cnt = output-counter.at(loc).last()
     let example-number = example-blocks.at(loc).len()
-    if cnt == example-number {
+    if current-idx == example-number {
       content
     }
   })
-  if step {
-    output-counter.step()
-  }
 }
 
 #let inline-code(content) = box(
@@ -28,19 +23,25 @@
 
 #set text(font: "Linux Libertine")
 #let normal-show(content) = {
-  output-counter.update(1)
   example-blocks.update(old => {
     old.push(content.text)
     old
   })
   locate(loc => {
-    let prefix = example-blocks.at(loc).slice(0, -1).join("\n\n")
+    let idx = example-blocks.at(loc).len()
+    let prefix = "#let output = output-on-final.with(1)\n"
+    for (ii, block) in example-blocks.at(loc).slice(0, -1).enumerate(start: 2) {
+      prefix += block + "\n\n"
+      prefix += "#let output = output-on-final.with(" + str(ii) + ")\n"
+    }
+    // panic(prefix)
+    // let prefix = example-blocks.at(loc).slice(0, -1).join("\n\n#let output = output-on-idx.with(idx)")
     example-with-source(
       prefix: prefix,
       content.text,
       lib: lib,
       direction: ltr,
-      output: output,
+      output-on-final: output-on-final,
     )
   })
 }
@@ -140,7 +141,9 @@ You can account for your locale by updating `default-currency`, `default-hundred
 #output[
   American: #format-currency(12.5)
   
-  #default-currency.update("€")
+]
+#default-currency.update("€")
+#output[
   European: #format-currency(12.5)
 ]
 ```
