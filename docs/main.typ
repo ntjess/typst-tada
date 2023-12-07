@@ -1,5 +1,6 @@
 #import "../lib.typ": *
 #import "utils.typ": *
+#import display: default-type-info
 
 #set page(height: auto, margin: 0.2in, fill: white)
 #let example-blocks = state("example-blocks", ())
