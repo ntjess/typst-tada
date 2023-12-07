@@ -6,7 +6,7 @@
 #let default-decimal = state("decimal-state", ".")
 
 
-#let format-float(number, hundreds-separator: auto, decimal: auto, digits: 2) ={
+#let format-float(number, hundreds-separator: auto, decimal: auto, digits: none) ={
   // Adds commas after each 3 digits to make
   // pricing more readable
   if hundreds-separator == auto {
@@ -26,9 +26,14 @@
     }
     num-with-commas = integer-portion.at(-ii - 1) + num-with-commas
   }
-  // Another "round" is needed to offset float imprecision
-  let fraction = calc.round(calc.fract(number), digits: digits + 1)
-  let fraction-int = calc.round(fraction * calc.pow(10, digits))
+
+  let fraction-int = if digits == none {
+    calc.fract(number)
+  } else {
+    // Another "round" is needed to offset float imprecision
+    let fraction = calc.round(calc.fract(number), digits: digits + 1)
+    calc.round(fraction * calc.pow(10, digits))
+  }
   if fraction-int == 0 {
     fraction-int = ""
   } else {
@@ -45,7 +50,7 @@
   if currency == auto {
     currency = default-currency.display()
   }
-  let out = format-float(calc.abs(number), ..args)
+  let out = format-float(calc.abs(number), digits: 2, ..args)
   if number < 0 {
     out = "(" + out + ")"
   }
