@@ -52,9 +52,11 @@
   }
   let out = format-float(calc.abs(number), digits: 2, ..args)
   if number < 0 {
-    out = "(" + out + ")"
+    "(" + currency + out + ")"
   }
-  currency + out
+  else {
+    currency + out
+  }
 }
 
 #let format-percent(number, ..args) = {
