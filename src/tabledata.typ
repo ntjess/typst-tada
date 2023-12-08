@@ -4,8 +4,10 @@
 #let TableData(
   rows: (),
   field-info: (:),
-  tablex-kwargs: (:),
+  type-info: (:),
   add-row-fields: false,
+  field-defaults: (:),
+  tablex-kwargs: (:),
   ..unused
 ) = {
   let types = rows.map(el => type(el)).dedup()
@@ -28,14 +30,18 @@
       }
     }
   }
-
-  (
+  let data = (
     rows: rows,
     field-info: field-info,
-    table: to-tablex((rows: rows, field-info: field-info), ..tablex-kwargs),
+    type-info: type-info,
+    field-defaults: field-defaults,
+    add-row-fields: add-row-fields,
     tablex-kwargs: tablex-kwargs,
   )
 
+  data.insert("table", to-tablex(data, ..tablex-kwargs))
+
+  data
 }
 
 #let with-row-fields(td) = {
@@ -158,5 +164,9 @@
       info.insert(str(row.__index), (type: "content"))
     }
   }
-  TableData(..td, rows: out-rows, field-info: info)
+  // Type info is no longer relevant
+  for key in ("type-info", "field-defaults", "field-info") {
+    td.remove(key)
+  }
+  TableData(rows: out-rows, field-info: info)
 }

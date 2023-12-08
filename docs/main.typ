@@ -5,22 +5,16 @@
 #set page(height: auto, margin: 0.2in, fill: white)
 #let example-blocks = state("example-blocks", ())
 
-#let output-on-final(current-idx, content) = {
-  locate(loc => {
-    let example-number = example-blocks.at(loc).len()
-    if current-idx == example-number {
-      content
-    }
-  })
-}
 
 #let inline-code(content) = box(
   radius: 0.25em,
-  fill: white.darken(3%),
+  fill: rgb("#ddd8"),
   inset: 0.25em,
   baseline: 0.25em,
   content,
 )
+
+#show raw.where(block: false): inline-code
 
 #set text(font: "Linux Libertine")
 #let normal-show(content) = {
@@ -29,12 +23,11 @@
     old
   })
   locate(loc => {
-    let idx = example-blocks.at(loc).len()
-    let prefix = "#let output = output-on-final.with(1)\n"
+    let prefix = "#let output = (body) => {}\n"
     for (ii, block) in example-blocks.at(loc).slice(0, -1).enumerate(start: 2) {
       prefix += block + "\n\n"
-      prefix += "#let output = output-on-final.with(" + str(ii) + ")\n"
     }
+    prefix += "#let output = (body) => body\n"
     // panic(prefix)
     // let prefix = example-blocks.at(loc).slice(0, -1).join("\n\n#let output = output-on-idx.with(idx)")
     example-with-source(
@@ -42,7 +35,6 @@
       content.text,
       lib: lib,
       direction: ltr,
-      output-on-final: output-on-final,
     )
   })
 }
@@ -64,13 +56,28 @@ Key features include:
 - *Data representation*: Handle displaying currencies, floats, integers, and more
   with ease and arbitrary customization
 
+#text(red)[Note: This library is in early development. The API is subject to change especially as typst adds more support for user-defined types. *Backwards compatibility is not guaranteed!* Handling of field info, value types, and more may change substantially with more user feedback.]
+
+== Importing
+TaDa is split into several core modules: data display, computed operations, and table manipulation:
+
+#raw(lang: "typst", block: false, "#import \"@preview/tada:" + str(version) + "\": ops, display, tabledata")
+
+- `ops` provides functions like `agg`, `chain`, `collect`, etc. as shown below.
+- `display` provides functions like  `format-float`, `to-tablex`, etc. that control how rendered content appears.
+- `tabledata` provides the `TableData` type and functions like `transpose`, `subset`, `concat`, etc. that directly impact table rows and fields.
 
 = Table manipulation
-TaDa provides two main ways to construct tables -- from columns and from rows:
 
-== Hello world
-_Note: This and all following examples wrap  rendered content in #inline-code[`#output[...]`] blocks. This is purely a helper function for the documentation, and is *not required* in your own code._
+_Note: All following examples wrap  rendered content in `#output[...]` blocks. This is purely a helper function for the documentation to make sure the right side's output only renders the current example. It is *not required* in your own code._
+
+TaDa provides two main ways to construct tables -- from columns and from rows:
 ```example
+// See `importing tada` above for where these variables originated
+#import ops: *
+#import tabledata: *
+#import display: *
+
 #let column-data = (
   name: ("Bread", "Milk", "Eggs"),
   price: (1.25, 2.50, 1.50),
@@ -103,27 +110,57 @@ TaDa will automatically add an `__index` field to each row. This is useful for s
 == Title formatting
 You can pass any `content` as a field's `title`. *Note*: if you pass a string, it will be evaluated as markup.
 ```example
-#let fmt = heading.with(outlined: false)
+#let fmt = it => heading(outlined: false, upper(it.at(0)) + it.slice(1))
 
 #let titles = (
-  name: (title: fmt("Name")),
-  price: (title: fmt("Price")),
-  quantity: (title: fmt("Qty")),
+  name: (title: fmt), // as a function
+  quantity: (title: fmt("Qty")), // as a string
   ..td.field-info,
 )
-#let td = TableData(..td, field-info: titles)
+// You can also provide defaults for any unspecified field info
+#let defaults = (title: fmt)
+#let td = TableData(..td, field-info: titles, field-defaults: defaults)
+
 #output(td.table)
+```
+
+== An important note on table rendering
+Typst does not have formal mechanisms yet for object-oriented programming. So, `TableData` is simply a dictionary under the hood. *Therefore*, when calling `td.table` to render a table, it will only show the rows, field data, and tablex keywords passed on initialization of the object. If you insert additional rows or columns, you need to *recreate* a new `TableData` object before calling `.table`, otherwise the new data will not be shown. Alternatively, you can call `to-tablex` on the modified structure which will render with up-to-date information.
+
+```example
+#let adjusted = td
+#adjusted.rows.push((name: "Another product", price: 10.0, quantity: 2))
+// Outdated information!
+#output[
+  #grid(columns: (1fr, 1fr))[
+    Updates didn't persist!
+    #adjusted.table
+  ][
+    Instead, recreate the `TableData`
+    #TableData(..adjusted).table
+    // or to-tablex, but this won't auto-populate
+    // the __index field
+  ]
+]
 ```
 
 == Value formatting
 
 === `type`
 Type information can have attached metadata that specifies alignment, display formats, and more. Available types and their metadata are:
-#default-type-info
+#raw(lang: "typc", repr(default-type-info)). While adding your own default types is not yet supported, you can simply defined
+a dictionary of specifications and pass its keys to the field
 
 ```example
-#td.field-info.at("price").insert("type", "currency")
-#let td = TableData(..td)
+#let fmt-currency(val) = {
+  let sign = if val < 0 {str.from-unicode(0x2212)} else {""}
+  let currency = "$"
+  [#sign#currency]
+  format-float(calc.abs(val), precision: 2, pad: true)
+}
+#let currency-info = (display: fmt-currency, align: right)
+#td.field-info.insert("price", (type: "currency"))
+#let td = TableData(..td, type-info: ("currency": currency-info))
 #output(td.table)
 ```
 
@@ -135,21 +172,21 @@ Type information can have attached metadata that specifies alignment, display fo
   #transpose(td, ignore-types: true, fields-name: "").table
 ]
 ```
-
-=== Currency and decimal locales
-You can account for your locale by updating `default-currency`, `default-hundreds-separator`, and `default-decimal`:
-```example
-#output[
-  American: #format-currency(12.5)
+// Leave this out until locales are handled more robustly
+// === Currency and decimal locales
+// You can account for your locale by updating `default-currency`, `default-hundreds-separator`, and `default-decimal`:
+// ```example
+// #output[
+//   American: #format-currency(12.5)
   
-]
-#default-currency.update("€")
-#output[
-  European: #format-currency(12.5)
-]
-```
+// ]
+// #default-currency.update("€")
+// #output[
+//   European: #format-currency(12.5)
+// ]
+// ```
 
-These changes will also impact how `currency` and `float` types are displayed in a table.
+// These changes will also impact how `currency` and `float` types are displayed in a table.
 
 === `display`
 If your type is not available or you want to customize its display, pass a `display` function that formats the value, or a string that accesses `value` in its scope:
@@ -210,7 +247,6 @@ Rows can also be selected by whether they fulfill a field condition:
   #filter(td, expression: "price < 1.5").table
 ]
 ```
-
 = Operations
 
 == Expressions
@@ -223,7 +259,6 @@ The easiest way to leverage TaDa's flexibility is through expressions. They can 
   td,
   "total",
   expression: "price * quantity",
-  title: fmt("Total"),
   type: "currency",
 )
 
@@ -233,7 +268,6 @@ The easiest way to leverage TaDa's flexibility is through expressions. They can 
   "Tax",
   // Expressions can be functions, too
   expression: (total: none, ..rest) => total * 0.2,
-  title: fmt("Tax"),
   type: "currency",
 )
 
@@ -266,8 +300,7 @@ It is inconvenient to require several temporary variables as above, or deep func
     title: fmt("w/ Tax"),
     type: "currency",
   ),
-  // Don't forget to collect before taking
-  // a subset!
+  // Don't forget to collect before taking a subset!
   collect,
   subset.with(
     fields: ("name", "total", "after tax")
@@ -287,26 +320,24 @@ Row-wise and column-wise reduction is supported through `agg`:
     using: array.sum,
     fields: "total"
   ),
-  // use "item" to extract the value when
-  // a table has exactly one element,
+  // use "item" to extract the value when a table has exactly one element
   item
 )
 #output[
-  *Grand total: #format-currency(grand-total)*
+  *Grand total: #fmt-currency(grand-total)*
 ]
 ```
 
 It is also easy to aggregate over multiple fields:
 ```example
-#let agg-rows = agg(
+#let agg-td = agg(
   totals,
   using: array.sum,
   fields: ("total", "after tax"),
   axis: 0,
-  title: "#repr(function)\(#field\)"
+  title: "*#repr(function)\(#field\)*"
 )
-
-#output(agg-rows.table)
+#output(agg-td.table)
 ```
 
 = Roadmap
