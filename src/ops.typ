@@ -20,7 +20,7 @@
       } else if return-single-row {
         1
       } else {
-        panic("When fields and indexes are array-like, axis must be specified")
+        panic("When fields and indexes are both array-like, `axis` must be specified")
       }
     }
     if axis not in (0, 1) {

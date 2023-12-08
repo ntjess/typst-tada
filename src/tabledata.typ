@@ -1,5 +1,5 @@
 #import "helpers.typ": *
-#import "display.typ": display
+#import "display.typ": to-tablex
 
 #let TableData(
   rows: (),
@@ -32,7 +32,7 @@
   (
     rows: rows,
     field-info: field-info,
-    table: display((rows: rows, field-info: field-info), ..tablex-kwargs),
+    table: to-tablex((rows: rows, field-info: field-info), ..tablex-kwargs),
     tablex-kwargs: tablex-kwargs,
   )
 
@@ -74,9 +74,13 @@
   raw-values.at(0).at(0)
 }
 
-#let with-field(td, field, ..info) = {
+#let with-field(td, field, preserve-existing: true, ..info) = {
+  let to-insert = info.named()
+  if preserve-existing {
+     to-insert = td.field-info.at(field, default: (:)) + to-insert
+  }
   let field-dict = (:)
-  field-dict.insert(field, info.named())
+  field-dict.insert(field, to-insert)
   td.insert("field-info", td.field-info + field-dict)
   return TableData(..td)
 }
@@ -121,9 +125,9 @@
     out
   })
   return TableData(
+    ..td,
     rows: rows,
     field-info: filtered-dict(field-info, keys: fields),
-    tablex-kwargs: td.tablex-kwargs,
   )
 }
 
@@ -154,5 +158,5 @@
       info.insert(str(row.__index), (type: "content"))
     }
   }
-  TableData(rows: out-rows, field-info: info, tablex-kwargs: td.tablex-kwargs)
+  TableData(..td, rows: out-rows, field-info: info)
 }

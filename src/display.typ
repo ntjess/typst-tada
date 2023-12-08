@@ -155,7 +155,7 @@
   (names: names, align: aligns, columns: widths)
 }
 
-#let display(td, ..tablex-kwargs) = {
+#let to-tablex(td, ..tablex-kwargs) = {
   let (rows, field-info) = (td.rows, td.field-info)
   field-info = supplement-field-info-from-rows(field-info, rows)
 
