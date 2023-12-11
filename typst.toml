@@ -15,3 +15,7 @@ keywords = [
     "aggregate",
     "pandas",
 ]
+
+
+[tool.packager]
+paths = ["src", "lib.typ", "LICENSE", "README.md"]
