@@ -1,6 +1,6 @@
 #import "../lib.typ": *
 #import "utils.typ": *
-#import display: default-type-info
+#import display: DEFAULT-TYPE-FORMATS
 
 #set page(height: auto, margin: 0.2in, fill: white)
 #let example-blocks = state("example-blocks", ())
@@ -23,17 +23,20 @@
     old
   })
   locate(loc => {
-    let prefix = "#let output = (body) => {}\n"
+    let prefix = "#let to-tablex = (body) => {}\n
+    #let output = to-tablex
+    "
     for (ii, block) in example-blocks.at(loc).slice(0, -1).enumerate(start: 2) {
       prefix += block + "\n\n"
     }
-    prefix += "#let output = (body) => body\n"
-    // panic(prefix)
-    // let prefix = example-blocks.at(loc).slice(0, -1).join("\n\n#let output = output-on-idx.with(idx)")
+    prefix += "
+      #let to-tablex = tada.to-tablex
+      #let output = (content) => { content }
+    "
     example-with-source(
       prefix: prefix,
       content.text,
-      lib: lib,
+      tada: lib,
       direction: ltr,
     )
   })
@@ -58,26 +61,54 @@ Key features include:
 
 #text(red)[Note: This library is in early development. The API is subject to change especially as typst adds more support for user-defined types. *Backwards compatibility is not guaranteed!* Handling of field info, value types, and more may change substantially with more user feedback.]
 
+// Leave out for now
+// #show outline.entry: it => {
+//   link(it.element.location(), it.body)
+// }
+// #show outline.entry.where(
+//   level: 1
+// ): it => {
+//   v(12pt, weak: true)
+//   strong(it)
+// }
+
+
+// #outline(indent: 1em, fill: none, title: none)
+
 == Importing
-TaDa is split into several core modules: data display, computed operations, and table manipulation:
+TaDa can be imported as follows:
+#let tada-str = "tada:" + str(version)
 
-#raw(lang: "typst", block: false, "#import \"@preview/tada:" + str(version) + "\": ops, display, tabledata")
+=== From the official packages repository (recommended):
+#raw(lang: "typst", block: true, "#import \"@preview/" + tada-str + "\"")
 
-- `ops` provides functions like `agg`, `chain`, `collect`, etc. as shown below.
-- `display` provides functions like  `format-float`, `to-tablex`, etc. that control how rendered content appears.
-- `tabledata` provides the `TableData` type and functions like `transpose`, `subset`, `concat`, etc. that directly impact table rows and fields.
+=== From the source code (not recommended)
+*Option 1:* You can clone the package directly into your project directory:
+  ```bash
+  # In your project directory
+  git clone https://github.com/ntjess/typst-tada.git tada
+  ```
+  Then import the functionality with ```typst #import "./tada/lib.typ"```
+
+*Option 2:* If Python is available on your system,
+  use the provided packaging script to install TaDa in typst's `local` directory:
+  ```bash
+  # Anywhere on your system
+  git clone https://github.com/ntjess/typst-tada.git
+  cd typst-tada
+  # Replace $XDG_CACHE_HOME with the appropriate directory based on
+  # https://github.com/typst/packages#downloads
+  python package.py ./typst.toml "$XDG_CACHE_HOME/typst/packages" \
+    --namespace local
+  ``` 
+  Now, TaDa is available under the local namespace:
+  #raw(lang: "typst", block: true, "#import \"@local/" + tada-str + "\"")
+
 
 = Table manipulation
-
-_Note: All following examples wrap  rendered content in `#output[...]` blocks. This is purely a helper function for the documentation to make sure the right side's output only renders the current example. It is *not required* in your own code._
-
 TaDa provides two main ways to construct tables -- from columns and from rows:
-```example
-// See `importing tada` above for where these variables originated
-#import ops: *
-#import tabledata: *
-#import display: *
 
+```example
 #let column-data = (
   name: ("Bread", "Milk", "Eggs"),
   price: (1.25, 2.50, 1.50),
@@ -88,23 +119,15 @@ TaDa provides two main ways to construct tables -- from columns and from rows:
   (name: "Milk", price: 2.50, quantity: 1),
   (name: "Eggs", price: 1.50, quantity: 3),
 )
-#let td = table-data-from-columns(column-data)
+
+// See `importing tada` above for reference
+#let td = tada.from-columns(column-data)
 // Equivalent to:
 // #let td = TableData(rows: row-data)
 
-// Show using the `table` attribute
-#output(td.table)
-```
-
-== Using `__index`
-
-TaDa will automatically add an `__index` field to each row. This is useful for showing auto-incrementing row numbers and filtering operations:
-
-```example
-#td.field-info.at("__index").insert("title", "\#")
-#td.field-info.at("__index").insert("hide", false)
-#let td = TableData(..td)
-#output(td.table)
+// Show using `to-tablex`
+// #let to-tablex = tada.to-tablex
+#to-tablex(td)
 ```
 
 == Title formatting
@@ -121,67 +144,62 @@ You can pass any `content` as a field's `title`. *Note*: if you pass a string, i
 #let defaults = (title: fmt)
 #let td = TableData(..td, field-info: titles, field-defaults: defaults)
 
-#output(td.table)
+#to-tablex(td)
 ```
 
-== An important note on table rendering
-Typst does not have formal mechanisms yet for object-oriented programming. So, `TableData` is simply a dictionary under the hood. *Therefore*, when calling `td.table` to render a table, it will only show the rows, field data, and tablex keywords passed on initialization of the object. If you insert additional rows or columns, you need to *recreate* a new `TableData` object before calling `.table`, otherwise the new data will not be shown. Alternatively, you can call `to-tablex` on the modified structure which will render with up-to-date information.
+== Using `__index`
+
+TaDa will automatically add an `__index` field to each row that is hidden by default. If you want it displayed, update its information to set ```typc hide: false```:
 
 ```example
-#let adjusted = td
-#adjusted.rows.push((name: "Another product", price: 10.0, quantity: 2))
-// Outdated information!
-#output[
-  #grid(columns: (1fr, 1fr))[
-    Updates didn't persist!
-    #adjusted.table
-  ][
-    Instead, recreate the `TableData`
-    #TableData(..adjusted).table
-    // or to-tablex, but this won't auto-populate
-    // the __index field
-  ]
-]
+// You can add new fields or update existing ones using `with-field`.
+#let td = tada.with-field(td, "__index", hide: false, title: "\#")
+// You can also insert attributes directly:
+// #td.field-info.__index.insert("hide", false)
+// etc.
+#to-tablex(td)
 ```
 
 == Value formatting
 
 === `type`
 Type information can have attached metadata that specifies alignment, display formats, and more. Available types and their metadata are:
-#raw(lang: "typc", repr(default-type-info)). While adding your own default types is not yet supported, you can simply defined
+#raw(lang: "typc", repr(DEFAULT-TYPE-FORMATS)). While adding your own default types is not yet supported, you can simply defined
 a dictionary of specifications and pass its keys to the field
 
 ```example
 #let fmt-currency(val) = {
+  // "negative" sign if needed
   let sign = if val < 0 {str.from-unicode(0x2212)} else {""}
   let currency = "$"
   [#sign#currency]
-  format-float(calc.abs(val), precision: 2, pad: true)
+  tada.display.format-float(
+    calc.abs(val), precision: 2, pad: true
+  )
 }
 #let currency-info = (display: fmt-currency, align: right)
 #td.field-info.insert("price", (type: "currency"))
 #let td = TableData(..td, type-info: ("currency": currency-info))
-#output(td.table)
+#to-tablex(td)
 ```
-
 == Transposing
 `transpose` is supported, but keep in mind if columns have different types, an error will be a frequent result. To avoid the error, explicitly pass `ignore-types: true`. You can choose whether to keep field names as an additional column by passing a string to `fields-name` that is evaluated as markup:
 
 ```example
-#output[
-  #transpose(td, ignore-types: true, fields-name: "").table
-]
+#to-tablex(
+  transpose(td, ignore-types: true, fields-name: "")
+)
 ```
 // Leave this out until locales are handled more robustly
 // === Currency and decimal locales
 // You can account for your locale by updating `default-currency`, `default-hundreds-separator`, and `default-decimal`:
 // ```example
-// #output[
+// #to-tablex[
 //   American: #format-currency(12.5)
   
 // ]
 // #default-currency.update("€")
-// #output[
+// #to-tablex[
 //   European: #format-currency(12.5)
 // ]
 // ```
@@ -198,7 +216,7 @@ If your type is not available or you want to customize its display, pass a `disp
 )
 
 #let td = TableData(..td)
-#output(td.table)
+#to-tablex(td)
 ```
 
 === `align` etc.
@@ -208,9 +226,9 @@ You can pass `align` and `width` to a given field's metadata to determine how co
 #let adjusted = td
 #adjusted.field-info.at("name").insert("align", center)
 #adjusted.field-info.at("name").insert("width", 1fr)
-#output[
-  #TableData(..adjusted).table
-]
+#to-tablex(
+  TableData(..adjusted)
+)
 ```
 
 == Deeper `tablex` customization
@@ -229,33 +247,32 @@ passed to TableData as well:
     auto-vlines: false,
   ),
 )
-#output(td.table)
+#to-tablex(td)
 ```
 
 == Subselection
 You can select a subset of fields to display:
 
 ```example
-#output[
-  #subset(td, indexes: (0,2), fields: ("__index", "name", "price")).table
-]
+#to-tablex(
+  subset(td, indexes: (0,2), fields: ("__index", "name", "price"))
+)
 ```
 
 Rows can also be selected by whether they fulfill a field condition:
 ```example
-#output[
-  #filter(td, expression: "price < 1.5").table
-]
+#to-tablex(
+  filter(td, expression: "price < 1.5")
+)
 ```
 = Operations
 
 == Expressions
 The easiest way to leverage TaDa's flexibility is through expressions. They can be strings that treat field names as variables, or functions that take keyword-only arguments.
-  - *Note*! you must `collect` before showing a table to ensure all expressions are computed:
 - *Note*! When passing functions, every field is passed as a named argument to the function. So, make sure to capture unused fields with `..rest` (the name is unimportant) to avoid errors.
 
 ```example
-#let td = with-field(
+#let td = tada.with-field(
   td,
   "total",
   expression: "price * quantity",
@@ -263,7 +280,7 @@ The easiest way to leverage TaDa's flexibility is through expressions. They can 
 )
 
 // Expressions can build off other expressions, too
-#let taxed = with-field(
+#let taxed = tada.with-field(
   td,
   "Tax",
   // Expressions can be functions, too
@@ -271,27 +288,23 @@ The easiest way to leverage TaDa's flexibility is through expressions. They can 
   type: "currency",
 )
 
-// Extra field won't show here!
-// #output(taxed.table)
-// Computed expressions must be collected
-#output(collect(taxed).table)
+#to-tablex(taxed)
 ```
 
 == Chaining
 It is inconvenient to require several temporary variables as above, or deep function nesting, to perform multiple operations on a table. TaDa provides a `chain` function to make this easier:
 
 ```example
+#let (chain, concat) = (tada.chain, tada.concat)
 #let totals = chain(td,
   concat.with(
     field: "total",
     expression: "price * quantity",
-    title: fmt("Total"),
     type: "currency",
   ),
   concat.with(
     field: "tax",
     expression: "total * 0.2",
-    title: fmt("Tax"),
     type: "currency",
   ),
   concat.with(
@@ -300,14 +313,12 @@ It is inconvenient to require several temporary variables as above, or deep func
     title: fmt("w/ Tax"),
     type: "currency",
   ),
-  // Don't forget to collect before taking a subset!
-  collect,
   subset.with(
     fields: ("name", "total", "after tax")
   ),
 )
 
-#output(totals.table)
+#to-tablex(totals)
 ```
 
 == Aggregation
@@ -315,14 +326,13 @@ Row-wise and column-wise reduction is supported through `agg`:
 
 ```example
 #let grand-total = chain(
-  totals,
-  agg.with(
-    using: array.sum,
-    fields: "total"
-  ),
+  subset(totals, fields: "total"),
+  agg.with(using: array.sum),
   // use "item" to extract the value when a table has exactly one element
   item
 )
+// "Output" is a helper function just for capturing example
+// outputs. It is not necessary in your code.
 #output[
   *Grand total: #fmt-currency(grand-total)*
 ]
@@ -337,7 +347,7 @@ It is also easy to aggregate over multiple fields:
   axis: 0,
   title: "*#repr(function)\(#field\)*"
 )
-#output(agg-td.table)
+#to-tablex(agg-td)
 ```
 
 = Roadmap
