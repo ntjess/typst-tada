@@ -13,7 +13,9 @@ keywords = [
     "tabular",
     "agg",
     "aggregate",
+    "filter",
     "pandas",
+    "polars",
 ]
 
 
