@@ -1,10 +1,8 @@
-#import "../lib.typ" as tada
+#import "../lib.typ"
+// Use "let =" instead of "import as" to be compatible with pandoc 3.1.10
+#let tada = lib
+#let DEFAULT-TYPE-FORMATS = tada.display.DEFAULT-TYPE-FORMATS
 #import "docutils.typ": template
-#import tada.display: DEFAULT-TYPE-FORMATS
-
-// #set page(height: auto, margin: 0.2in, fill: white)
-#let tada-box = box.with(stroke: black, inset: 2pt, baseline: 0.35em)
-#show "TaDa": [#tada-box[Ta]#tada-box[Da]]
 
 #show: template.with(
   // theme: "dark",
@@ -42,15 +40,17 @@ Key features include:
 //   strong(it)
 // }
 
+#let _make-import-stmt(namespace) = {
+  let import-str = "#import \"@" + namespace + "/tada:" + str(tada.tada-version) + "\""
+  raw(lang: "typst", block: true, import-str)
+}
 
 // #outline(indent: 1em, fill: none, title: none)
-
 == Importing
 TaDa can be imported as follows:
-#let tada-str = "tada:" + str(version)
 
 === From the official packages repository (recommended):
-#raw(lang: "typst", block: true, "#import \"@preview/" + tada-str + "\"")
+#_make-import-stmt("preview")
 
 === From the source code (not recommended)
 *Option 1:* You can clone the package directly into your project directory:
@@ -59,9 +59,7 @@ TaDa can be imported as follows:
 git clone https://github.com/ntjess/typst-tada.git tada
 ```
 Then import the functionality with
-```typst
-#import "./tada/lib.typ"
-```
+```typst #import "./tada/lib.typ" ```
 
 *Option 2:* If Python is available on your system,
   use the provided packaging script to install TaDa in typst's `local` directory:
@@ -76,7 +74,8 @@ Then import the functionality with
     --namespace local
   ``` 
   Now, TaDa is available under the local namespace:
-  #raw(lang: "typst", block: true, "#import \"@local/" + tada-str + "\"")
+
+  #_make-import-stmt("local")
 
 
 = Table adjustment
@@ -89,7 +88,7 @@ TaDa provides three main ways to construct tables -- from columns, rows, or reco
 - *Rows* are a 2D array where `values.at(0)` is a row (has one value for each field).
   Note that if `rows` are given without field names, they default to (0, 1, ..$n$).
 
-```global-example
+```globalexample
 #let column-data = (
   name: ("Bread", "Milk", "Eggs"),
   price: (1.25, 2.50, 1.50),
@@ -106,23 +105,22 @@ TaDa provides three main ways to construct tables -- from columns, rows, or reco
   ("Eggs", 1.50, 3),
 )
 
-// See `importing tada` above for reference
 #import tada: TableData
 #let td = TableData(data: column-data)
 // Equivalent to:
 #let td2 = tada.from-records(record-data)
-// _Not_ equivalent to (since fields are unknown):
+// _Not_ equivalent to (since field names are unknown):
 #let td3 = tada.from-rows(row-data)
 
-// Show using `to-tablex`
-// #let to-tablex = tada.to-tablex
 #to-tablex(td)
 #to-tablex(td2)
 #to-tablex(td3)
 ```
+
 == Title formatting
 You can pass any `content` as a field's `title`. *Note*: if you pass a string, it will be evaluated as markup.
-```global-example
+
+```globalexample
 #let fmt(it) = {
   heading(outlined: false,
     upper(it.at(0))
@@ -131,22 +129,32 @@ You can pass any `content` as a field's `title`. *Note*: if you pass a string, i
 }
 
 #let titles = (
-  name: (title: fmt), // as a function
-  quantity: (title: fmt("Qty")), // as a string
-  ..td.field-info,
+  // As a function
+  name: (title: fmt),
+  // As a string
+  quantity: (title: fmt("Qty")),
 )
-// You can also provide defaults for any unspecified field info
-#let defaults = (title: fmt)
-#let td = TableData(..td, field-info: titles, field-defaults: defaults)
+#let td = TableData(..td, field-info: titles)
 
+#to-tablex(td)
+```
+
+== Adapting default behavior
+You can specify defaults for any field not explicitly populated by passing information to
+`field-defaults`. Observe in the last example that `price` was not given a title. We can
+indicate it should be formatted the same as `name` by passing `title: fmt` to `field-defaults`. *Note* that any field that is explicitly given a value will not be affected by `field-defaults` (i.e., `quantity` will retain its string title "Qty")
+
+```globalexample
+#let defaults = (title: fmt)
+#let td = TableData(..td, field-defaults: defaults)
 #to-tablex(td)
 ```
 
 == Using `__index`
 
-TaDa will automatically add an `__index` field to each row that is hidden by default. If you want it displayed, update its information to set ```typc hide: false```:
+TaDa will automatically add an `__index` field to each row that is hidden by default. If you want it displayed, update its information to set `hide: false`:
 
-```global-example
+```globalexample
 // Use the helper function `update-fields` to update multiple fields
 // and/or attributes
 #import tada: update-fields
@@ -163,10 +171,14 @@ TaDa will automatically add an `__index` field to each row that is hidden by def
 
 === `type`
 Type information can have attached metadata that specifies alignment, display formats, and more. Available types and their metadata are:
-#raw(lang: "typc", repr(DEFAULT-TYPE-FORMATS)). While adding your own default types is not yet supported, you can simply defined
+#for (typ, info) in DEFAULT-TYPE-FORMATS [
+  - *#typ* : #info
+]
+
+While adding your own default types is not yet supported, you can simply defined
 a dictionary of specifications and pass its keys to the field
 
-```global-example
+```globalexample
 #let currency-info = (
   display: tada.display.format-usd, align: right
 )
@@ -174,10 +186,11 @@ a dictionary of specifications and pass its keys to the field
 #let td = TableData(..td, type-info: ("currency": currency-info))
 #to-tablex(td)
 ```
+
 == Transposing
 `transpose` is supported, but keep in mind if columns have different types, an error will be a frequent result. To avoid the error, explicitly pass `ignore-types: true`. You can choose whether to keep field names as an additional column by passing a string to `fields-name` that is evaluated as markup:
 
-```global-example
+```globalexample
 #to-tablex(
   tada.transpose(
     td, ignore-types: true, fields-name: ""
@@ -188,7 +201,7 @@ a dictionary of specifications and pass its keys to the field
 // Leave this out until locales are handled more robustly
 // === Currency and decimal locales
 // You can account for your locale by updating `default-currency`, `default-hundreds-separator`, and `default-decimal`:
-// ```global-example
+// ```globalexample
 // #to-tablex[
 //   American: #format-currency(12.5)
   
@@ -204,7 +217,7 @@ a dictionary of specifications and pass its keys to the field
 === `display`
 If your type is not available or you want to customize its display, pass a `display` function that formats the value, or a string that accesses `value` in its scope:
   
-```global-example
+```globalexample
 #td.field-info.at("quantity").insert(
   "display",
   val => ("/", "One", "Two", "Three").at(val),
@@ -217,9 +230,9 @@ If your type is not available or you want to customize its display, pass a `disp
 === `align` etc.
 You can pass `align` and `width` to a given field's metadata to determine how content aligns in the cell and how much horizontal space it takes up. In the future, more `tablex` setup arguments will be accepted.
 
-```global-example
+```globalexample
 #let adjusted = update-fields(
-  td, name: (align: center, width: 1fr)
+  td, name: (align: center, width: 1.4in)
 )
 #to-tablex(adjusted)
 ```
@@ -228,7 +241,7 @@ You can pass `align` and `width` to a given field's metadata to determine how co
 TaDa uses `tablex` to display the table. So any argument that `tablex` accepts can be
 passed to TableData as well:
 
-```global-example
+```globalexample
 #let mapper = (index, row) => {
   let fill = if index == 0 {rgb("#8888")} else {none}
   row.map(cell => (..cell, fill: fill))
@@ -245,7 +258,7 @@ passed to TableData as well:
 == Subselection
 You can select a subset of fields or rows to display:
 
-```global-example
+```globalexample
 #import tada: subset
 #to-tablex(
   subset(td, indexes: (0,2), fields: ("name", "price"))
@@ -253,7 +266,7 @@ You can select a subset of fields or rows to display:
 ```
 
 Note that `indexes` is based on the table's `__index` column, _not_ it's positional index within the table:
-```global-example
+```globalexample
 #let td2 = td
 #td2.data.insert("__index", (1, 2, 2))
 #to-tablex(
@@ -262,7 +275,7 @@ Note that `indexes` is based on the table's `__index` column, _not_ it's positio
 ```
 
 Rows can also be selected by whether they fulfill a field condition:
-```global-example
+```globalexample
 #to-tablex(
   tada.filter(td, expression: "price < 1.5")
 )
@@ -275,7 +288,7 @@ Concatenating rows and columns are both supported operations, but only in the si
 - Unless you specify a fill value for missing values, the function will panic if the tables do not match exactly along their concatenation axis.
 - You cannot stack with `axis: 1` unless every column has a unique field name.
 
-```global-example
+```globalexample
 #import tada: stack
 
 #let td2 = TableData(
@@ -303,30 +316,34 @@ Concatenating rows and columns are both supported operations, but only in the si
 The easiest way to leverage TaDa's flexibility is through expressions. They can be strings that treat field names as variables, or functions that take keyword-only arguments.
 - *Note*! When passing functions, every field is passed as a named argument to the function. So, make sure to capture unused fields with `..rest` (the name is unimportant) to avoid errors.
 
-```global-example
+```globalexample
+#let make-dict(field, expression) = {
+  let out = (:)
+  out.insert(
+    field,
+    (expression: expression, type: "currency"),
+  )
+  out
+}
+
 #let td = update-fields(
-  td,
-  total: (
-    expression: "price * quantity",
-    type: "currency",
-  ),
+  td, ..make-dict("total", "price * quantity" )
 )
 
-// Expressions can be functions too
 #let tax-expr(total: none, ..rest) = { total * 0.2 }
-
 #let taxed = update-fields(
-  td,
-  tax: (expression: tax-expr, type: "currency"),
+  td, ..make-dict("tax", tax-expr),
 )
 
-#to-tablex(taxed)
+#to-tablex(
+  subset(taxed, fields: ("name", "total", "tax"))
+)
 ```
 
 == Chaining
 It is inconvenient to require several temporary variables as above, or deep function nesting, to perform multiple operations on a table. TaDa provides a `chain` function to make this easier. Furthermore, when you need to compute several fields at once and don't need extra field information, you can use `add-expressions` as a shorthand:
 
-```global-example
+```globalexample
 #import tada: chain, add-expressions
 #let totals = chain(td,
   add-expressions.with(
@@ -347,7 +364,7 @@ It is inconvenient to require several temporary variables as above, or deep func
 
 == Sorting
 You can sort by ascending/descending values of any field, or provide your own transformation function to the `key` argument to customize behavior further:
-```global-example
+```globalexample
 #import tada: sort-values
 #to-tablex(sort-values(
   td, by: "quantity", descending: true
@@ -357,23 +374,23 @@ You can sort by ascending/descending values of any field, or provide your own tr
 == Aggregation
 Column-wise reduction is supported through `agg`, using either functions or string expressions:
 
-```global-example
+```globalexample
 #import tada: agg, item
 #let grand-total = chain(
   totals,
   agg.with(after-tax: array.sum),
-  // use "item" to extract the value when a table has exactly one element
+  // use "item" to extract exactly one element
   item
 )
-// "Output" is a helper function just for capturing example outputs. It is not
-// necessary in your code.
+// "Output" is a helper function just for these docs.
+// It is not necessary in your code.
 #output[
   *Grand total: #tada.display.format-usd(grand-total)*
 ]
 ```
 
-It is also easy to aggregate several expressions at once
-```global-example
+It is also easy to aggregate several expressions at once:
+```globalexample
 #let agg-exprs = (
   "# items": "quantity.sum()",
   "Longest name": "[#name.sorted(key: str.len).at(-1)]",
@@ -381,11 +398,3 @@ It is also easy to aggregate several expressions at once
 #let agg-td = tada.agg(td, ..agg-exprs)
 #to-tablex(agg-td)
 ```
-
-= Roadmap
-#let cb = box(stroke: black, width: 0.65em, height: 0.65em, baseline: 0.65em)
-#set list(marker: cb)
-- `apply` for value-wise transformations
-- Reconcile whether `field-info` should be required
-- `pivot`/`melt`
-- `merge`/`join`

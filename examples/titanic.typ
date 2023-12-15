@@ -1,4 +1,4 @@
-#import "../docs/docutils.typ": template, py-code, code-result
+#import "../docs/docutils.typ": template, external-code
 #import "../lib.typ" as tada
 
 #show: template.with(
@@ -13,10 +13,9 @@
 #set page(margin: 0.7in, height: auto)
 
 = Poking around the `titanic` dataset
-/*
 == First in Python
 
-#py-code[```
+#external-code[```python
 import requests
 from pathlib import Path
 
@@ -27,27 +26,29 @@ def download(url, output_file):
     print("Download finished")
 
 download("https://web.stanford.edu/class/archive/cs/cs109/cs109.1166/stuff/titanic.csv", "examples/titanic.csv")
-```][#code-result[```console
+```]
+```console
 Download finished
-```]]
+```
 
-#py-code[```
+#external-code[```python
 import pandas as pd
 df = pd.read_csv("examples/titanic.csv")
 df["Name"] = df["Name"].str.split(" ").str.slice(0, 3).str.join(" ")
 df = df.drop(df.filter(like="Aboard", axis=1).columns, axis=1)
 print(df.head(5))
-```][#code-result[```console
+```]
+```console
    Survived  Pclass                   Name     Sex   Age     Fare
 0         0       3        Mr. Owen Harris    male  22.0   7.2500
 1         1       1      Mrs. John Bradley  female  38.0  71.2833
 2         1       3  Miss. Laina Heikkinen  female  26.0   7.9250
 3         1       1     Mrs. Jacques Heath  female  35.0  53.1000
 4         0       3      Mr. William Henry    male  35.0   8.0500
-```]]
+```
 = Can we do it in Typst?
-*/
-```global-example
+
+```globalexample
 #let csv-to-tabledata(file, n-rows: 50) = {
   let data = csv(file)
   let headers = data.at(0)
@@ -75,7 +76,7 @@ print(df.head(5))
 ```
 
 == Make it prettier
-```global-example
+```globalexample
 #let row-fmt(index, row) = {
   let fill = none
   if index == 0 {
@@ -92,7 +93,7 @@ print(df.head(5))
 ```
 
 == Convert types & clean data
-```global-example
+```globalexample
 #let usd = tada.display.format-usd
 
 #let td = chain(
@@ -116,12 +117,12 @@ print(df.head(5))
 ```
 
 == Find just the passengers over 30 paying over \$50
-```global-example
+```globalexample
 #to-tablex(filter(td, expression: `Age > 30 and Fare > 50`))
 ```
 
 == See how much each class paid and their average age
-```global-example
+```globalexample
 #let fares-per-class = tada.group-by(
   td,
   by: "Pclass",

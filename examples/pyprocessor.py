@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import os
 import re
@@ -40,41 +42,6 @@ def get_python_blocks(file: str | Path, label: str | None = None):
         subprocess.check_output(cmd, cwd=workspace_dir, shell=True, text=True)
     )
     return result
-
-
-def get_output_locations(file: str | Path):
-    """
-    Gathers the ast of a typst file, looks for all the output locations, and returns an
-    array of {start_row: int, start_col: int, end_row: int, end_col: int} objects
-    """
-    workspace_dir = os.getcwd()
-    file = Path(file)
-    with TemporaryDirectory() as temp_dir:
-        cmd = (
-            f"typst-ts-cli compile"
-            f' --entry "{Path(file).resolve().relative_to(workspace_dir)}"'
-            f" --format ast"
-            f' --output "{temp_dir}"'
-        )
-        subprocess.check_output(cmd, cwd=workspace_dir, shell=True, text=True)
-        out_file = list(Path(temp_dir).glob("*.text"))[0]
-        with open(out_file) as output_file:
-            ast = output_file.read()
-
-    line_regex = re.compile(
-        r'Fn::\(Ident: "code-result"\).*\n.*<(\d+):(\d+)~(\d+):(\d+)>', re.MULTILINE
-    )
-    locations = []
-    for match in line_regex.finditer(ast):
-        locations.append(
-            {
-                "start_row": int(match.group(1)),
-                "start_col": int(match.group(2)),
-                "end_row": int(match.group(3)),
-                "end_col": int(match.group(4)),
-            }
-        )
-    return locations
 
 
 def _format_text_for_cell(text):
