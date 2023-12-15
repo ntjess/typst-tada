@@ -31,13 +31,19 @@ def create_package(
     upload_folder.mkdir(parents=True)
 
     src = Path(source_folder)
-    for path in map(Path, package_paths):
-        if path.is_dir():
-            shutil.copytree(
-                src.joinpath(path), upload_folder.joinpath(path), dirs_exist_ok=True
-            )
+    for entry in package_paths:
+        if isinstance(entry, (str, Path)):
+            source = src.joinpath(entry)
+            dest = upload_folder.joinpath(entry)
+        elif isinstance(entry, dict):
+            source = src.joinpath(entry["from"])
+            dest = upload_folder.joinpath(entry["to"])
         else:
-            shutil.copy(src.joinpath(path), upload_folder.joinpath(path))
+            raise TypeError(f"Invalid entry {entry}")
+        if source.is_dir():
+            shutil.copytree(source, dest, dirs_exist_ok=True)
+        else:
+            shutil.copy(source, dest)
     return upload_folder
 
 

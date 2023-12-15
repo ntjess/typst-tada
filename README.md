@@ -1,6 +1,8 @@
 # Overview
 
-TaDa provides a set of simple but powerful operations on rows of data.
+TaDa provides a set of simple but powerful operations on rows of data. A
+full manual is available online:
+<https://github.com/ntjess/typst-tada/blob/v0.1.0/docs/manual.pdf>
 
 Key features include:
 

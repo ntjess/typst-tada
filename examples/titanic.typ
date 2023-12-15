@@ -49,7 +49,7 @@ print(df.head(5))
 = Can we do it in Typst?
 
 ```globalexample
-#let csv-to-tabledata(file, n-rows: 50) = {
+#let csv-to-tabledata(file, n-rows: -2) = {
   let data = csv(file)
   let headers = data.at(0)
   let rows = data.slice(1, n-rows + 1)
@@ -116,9 +116,9 @@ print(df.head(5))
 #to-tablex(subset(td, indexes: range(0, 10)))
 ```
 
-== Find just the passengers over 30 paying over \$50
+== Find just the passengers over 30 paying over \$230
 ```globalexample
-#to-tablex(filter(td, expression: `Age > 30 and Fare > 50`))
+#to-tablex(filter(td, expression: `Age > 30 and Fare > 230`))
 ```
 
 == See how much each class paid and their average age

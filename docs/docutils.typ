@@ -142,7 +142,9 @@
 ) = {
   // Formatting inline raw code
   show raw.where(block: false): raw-background.with(inline: true, ..background-kwargs)
-  show raw.where(block: true): raw-line-numbering-background.with(width: 100%, ..background-kwargs)
+  show raw.where(block: true): raw-line-numbering-background.with(
+    width: 100%, ..background-kwargs, line-numbers: false
+  )
   show raw.where(block: true): it => {
     if "example" in it.lang {
       // Raw style will be double applied which shrinks text, so preemptively undo the
