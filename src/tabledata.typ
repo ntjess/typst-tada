@@ -37,8 +37,9 @@
         }
       }
       let expr = field-info.at(key).at("expression")
+      let default-scope = field-info.at(key).at("scope", default: (:))
       let value = H.eval-str-or-function(
-        expr, scope: scope, mode: "code", keyword: scope
+        expr, scope: default-scope + scope, mode: "code", keyword: scope
       )
       out-data.at(key).push(value)
       // In case this field is referenced by another expression

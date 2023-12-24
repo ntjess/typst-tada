@@ -117,7 +117,8 @@
     return value
   }
   if "display" in value-info {
-    H.eval-str-or-function(value-info.display, scope: (value: value), positional: value)
+    let scope = value-info.at("scope", default: (:)) + (value: value)
+    H.eval-str-or-function(value-info.display, scope: scope, positional: value)
   } else {
     value
   }
@@ -143,7 +144,8 @@
   for (key, info) in field-info.pairs() {
     if "title" in info {
       let original-field = key
-      let scope = (field: original-field, title-case-field: title-case(original-field))
+      let info-scope = info.at("scope", default: (:))
+      let scope = (..info-scope, field: original-field, title-case-field: title-case(original-field))
       key = H.eval-str-or-function(info.at("title"), scope: scope, positional: original-field)
       if type(key) not in (str, content) {
         key = repr(key)
