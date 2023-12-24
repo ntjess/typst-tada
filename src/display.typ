@@ -77,12 +77,14 @@
 /// -> str
 #let format-usd(number, ..args) = {
   // "negative" sign if needed
+  if args.pos().len() > 0 {
+    panic("format-usd() does not accept positional arguments")
+  }
   let sign = if number < 0 {str.from-unicode(0x2212)} else {""}
   let currency = "$"
   [#sign#currency]
-  format-float(
-    calc.abs(number), precision: 2, pad: true
-  )
+  let named = (precision: 2, pad: true, ..args.named())
+  format-float(calc.abs(number), ..named)
 }
 
 
