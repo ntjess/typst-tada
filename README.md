@@ -6,14 +6,14 @@ full manual is available online:
 
 Key features include:
 
--   **Arithmetic expressions**: Row-wise operations are as simple as
-    string expressions with field names
+- **Arithmetic expressions**: Row-wise operations are as simple as
+  string expressions with field names
 
--   **Aggregation**: Any function that operates on an array of values
-    can perform row-wise or column-wise aggregation
+- **Aggregation**: Any function that operates on an array of values can
+  perform row-wise or column-wise aggregation
 
--   **Data representation**: Handle displaying currencies, floats,
-    integers, and more with ease and arbitrary customization
+- **Data representation**: Handle displaying currencies, floats,
+  integers, and more with ease and arbitrary customization
 
 Note: This library is in early development. The API is subject to change
 especially as typst adds more support for user-defined types.
@@ -46,18 +46,17 @@ Then import the functionality with
 #import "./tada/lib.typ" 
 ```
 
-**Option 2:** If Python is available on your system, use the provided
-packaging script to install TaDa in typst's `local` directory:
+**Option 2:** If Python is available on your system, use `showman` to
+install TaDa in typst’s `local` directory:
 
 ``` bash
 # Anywhere on your system
   git clone https://github.com/ntjess/typst-tada.git
   cd typst-tada
   
-  # Replace $XDG_CACHE_HOME with the appropriate directory based on
-  # https://github.com/typst/packages#downloads
-  python package.py ./typst.toml "$XDG_CACHE_HOME/typst/packages" \
-    --namespace local
+  # Can be done in a virtual environment
+  pip install "git+https://github.com/ntjess/showman.git"
+  showman package ./typst.toml
   
 ```
 
@@ -71,20 +70,19 @@ Now, TaDa is available under the local namespace:
 
 ## Creation
 
-TaDa provides three main ways to construct tables -- from columns, rows,
+TaDa provides three main ways to construct tables – from columns, rows,
 or records.
 
--   **Columns** are a dictionary of field names to column values.
-    Alternatively, a 2D array of columns can be passed to
-    `from-columns`, where `values.at(0)` is a column (belongs to one
-    field).
+- **Columns** are a dictionary of field names to column values.
+  Alternatively, a 2D array of columns can be passed to `from-columns`,
+  where `values.at(0)` is a column (belongs to one field).
 
--   **Records** are a 1D array of dictionaries where each dictionary is
-    a row.
+- **Records** are a 1D array of dictionaries where each dictionary is a
+  row.
 
--   **Rows** are a 2D array where `values.at(0)` is a row (has one value
-    for each field). Note that if `rows` are given without field names,
-    they default to (0, 1, ..$n$).
+- **Rows** are a 2D array where `values.at(0)` is a row (has one value
+  for each field). Note that if `rows` are given without field names,
+  they default to (0, 1, ..$n$).
 
 ``` typst
 #let column-data = (
@@ -114,11 +112,11 @@ or records.
 #to-tablex(td2)
 #to-tablex(td3)
 ```
-![Example 1](https://raw.githubusercontent.com/ntjess/typst-tada/v0.1.0/assets/example-01.png)
+![Example 1](https://www.github.com/ntjess/typst-tada/raw/v0.1.0/assets/example-01.png)
 
 ## Title formatting
 
-You can pass any `content` as a field's `title`. **Note**: if you pass a
+You can pass any `content` as a field’s `title`. **Note**: if you pass a
 string, it will be evaluated as markup.
 
 ``` typst
@@ -139,7 +137,7 @@ string, it will be evaluated as markup.
 
 #to-tablex(td)
 ```
-![Example 2](https://raw.githubusercontent.com/ntjess/typst-tada/v0.1.0/assets/example-02.png)
+![Example 2](https://www.github.com/ntjess/typst-tada/raw/v0.1.0/assets/example-02.png)
 
 ## Adapting default behavior
 
@@ -149,14 +147,14 @@ that `price` was not given a title. We can indicate it should be
 formatted the same as `name` by passing `title: fmt` to
 `field-defaults`. **Note** that any field that is explicitly given a
 value will not be affected by `field-defaults` (i.e., `quantity` will
-retain its string title "Qty")
+retain its string title “Qty”)
 
 ``` typst
 #let defaults = (title: fmt)
 #let td = TableData(..td, field-defaults: defaults)
 #to-tablex(td)
 ```
-![Example 3](https://raw.githubusercontent.com/ntjess/typst-tada/v0.1.0/assets/example-03.png)
+![Example 3](https://www.github.com/ntjess/typst-tada/raw/v0.1.0/assets/example-03.png)
 
 ## Using `__index`
 
@@ -176,7 +174,7 @@ set `hide: false`:
 // etc.
 #to-tablex(td)
 ```
-![Example 4](https://raw.githubusercontent.com/ntjess/typst-tada/v0.1.0/assets/example-04.png)
+![Example 4](https://www.github.com/ntjess/typst-tada/raw/v0.1.0/assets/example-04.png)
 
 ## Value formatting
 
@@ -185,17 +183,17 @@ set `hide: false`:
 Type information can have attached metadata that specifies alignment,
 display formats, and more. Available types and their metadata are:
 
--   **string** : (default-value: \"\", align: left)
+- **string** : (default-value: "", align: left)
 
--   **content** : (display: , align: left)
+- **content** : (display: , align: left)
 
--   **float** : (align: right)
+- **float** : (align: right)
 
--   **integer** : (align: right)
+- **integer** : (align: right)
 
--   **percent** : (display: , align: right)
+- **percent** : (display: , align: right)
 
--   **index** : (align: right)
+- **index** : (align: right)
 
 While adding your own default types is not yet supported, you can simply
 defined a dictionary of specifications and pass its keys to the field
@@ -208,7 +206,7 @@ defined a dictionary of specifications and pass its keys to the field
 #let td = TableData(..td, type-info: ("currency": currency-info))
 #to-tablex(td)
 ```
-![Example 5](https://raw.githubusercontent.com/ntjess/typst-tada/v0.1.0/assets/example-05.png)
+![Example 5](https://www.github.com/ntjess/typst-tada/raw/v0.1.0/assets/example-05.png)
 
 ## Transposing
 
@@ -225,7 +223,7 @@ that is evaluated as markup:
   )
 )
 ```
-![Example 6](https://raw.githubusercontent.com/ntjess/typst-tada/v0.1.0/assets/example-06.png)
+![Example 6](https://www.github.com/ntjess/typst-tada/raw/v0.1.0/assets/example-06.png)
 
 ### `display`
 
@@ -242,11 +240,11 @@ a `display` function that formats the value, or a string that accesses
 #let td = TableData(..td)
 #to-tablex(td)
 ```
-![Example 7](https://raw.githubusercontent.com/ntjess/typst-tada/v0.1.0/assets/example-07.png)
+![Example 7](https://www.github.com/ntjess/typst-tada/raw/v0.1.0/assets/example-07.png)
 
 ### `align` etc.
 
-You can pass `align` and `width` to a given field's metadata to
+You can pass `align` and `width` to a given field’s metadata to
 determine how content aligns in the cell and how much horizontal space
 it takes up. In the future, more `tablex` setup arguments will be
 accepted.
@@ -257,7 +255,7 @@ accepted.
 )
 #to-tablex(adjusted)
 ```
-![Example 8](https://raw.githubusercontent.com/ntjess/typst-tada/v0.1.0/assets/example-08.png)
+![Example 8](https://www.github.com/ntjess/typst-tada/raw/v0.1.0/assets/example-08.png)
 
 ## Deeper `tablex` customization
 
@@ -277,7 +275,7 @@ accepts can be passed to TableData as well:
 )
 #to-tablex(td)
 ```
-![Example 9](https://raw.githubusercontent.com/ntjess/typst-tada/v0.1.0/assets/example-09.png)
+![Example 9](https://www.github.com/ntjess/typst-tada/raw/v0.1.0/assets/example-09.png)
 
 ## Subselection
 
@@ -289,9 +287,9 @@ You can select a subset of fields or rows to display:
   subset(td, indexes: (0,2), fields: ("name", "price"))
 )
 ```
-![Example 10](https://raw.githubusercontent.com/ntjess/typst-tada/v0.1.0/assets/example-10.png)
+![Example 10](https://www.github.com/ntjess/typst-tada/raw/v0.1.0/assets/example-10.png)
 
-Note that `indexes` is based on the table's `__index` column, *not* it's
+Note that `indexes` is based on the table’s `__index` column, *not* it’s
 positional index within the table:
 
 ``` typst
@@ -301,7 +299,7 @@ positional index within the table:
   subset(td2, indexes: 2, fields: ("__index", "name"))
 )
 ```
-![Example 11](https://raw.githubusercontent.com/ntjess/typst-tada/v0.1.0/assets/example-11.png)
+![Example 11](https://www.github.com/ntjess/typst-tada/raw/v0.1.0/assets/example-11.png)
 
 Rows can also be selected by whether they fulfill a field condition:
 
@@ -310,7 +308,7 @@ Rows can also be selected by whether they fulfill a field condition:
   tada.filter(td, expression: "price < 1.5")
 )
 ```
-![Example 12](https://raw.githubusercontent.com/ntjess/typst-tada/v0.1.0/assets/example-12.png)
+![Example 12](https://www.github.com/ntjess/typst-tada/raw/v0.1.0/assets/example-12.png)
 
 ## Concatenation
 
@@ -318,16 +316,16 @@ Concatenating rows and columns are both supported operations, but only
 in the simple sense of stacking the data. Currently, there is no ability
 to join on a field or otherwise intelligently merge data.
 
--   `axis: 0` places new rows below current rows
+- `axis: 0` places new rows below current rows
 
--   `axis: 1` places new columns to the right of current columns
+- `axis: 1` places new columns to the right of current columns
 
--   Unless you specify a fill value for missing values, the function
-    will panic if the tables do not match exactly along their
-    concatenation axis.
+- Unless you specify a fill value for missing values, the function will
+  panic if the tables do not match exactly along their concatenation
+  axis.
 
--   You cannot stack with `axis: 1` unless every column has a unique
-    field name.
+- You cannot stack with `axis: 1` unless every column has a unique field
+  name.
 
 ``` typst
 #import tada: stack
@@ -350,19 +348,19 @@ to join on a field or otherwise intelligently merge data.
 #let stack-b = stack(stack-a, td3, axis: 1)
 #to-tablex(stack-b)
 ```
-![Example 13](https://raw.githubusercontent.com/ntjess/typst-tada/v0.1.0/assets/example-13.png)
+![Example 13](https://www.github.com/ntjess/typst-tada/raw/v0.1.0/assets/example-13.png)
 
 # Operations
 
 ## Expressions
 
-The easiest way to leverage TaDa's flexibility is through expressions.
+The easiest way to leverage TaDa’s flexibility is through expressions.
 They can be strings that treat field names as variables, or functions
 that take keyword-only arguments.
 
--   **Note**! When passing functions, every field is passed as a named
-    argument to the function. So, make sure to capture unused fields
-    with `..rest` (the name is unimportant) to avoid errors.
+- **Note**! When passing functions, every field is passed as a named
+  argument to the function. So, make sure to capture unused fields with
+  `..rest` (the name is unimportant) to avoid errors.
 
 ``` typst
 #let make-dict(field, expression) = {
@@ -387,14 +385,14 @@ that take keyword-only arguments.
   subset(taxed, fields: ("name", "total", "tax"))
 )
 ```
-![Example 14](https://raw.githubusercontent.com/ntjess/typst-tada/v0.1.0/assets/example-14.png)
+![Example 14](https://www.github.com/ntjess/typst-tada/raw/v0.1.0/assets/example-14.png)
 
 ## Chaining
 
 It is inconvenient to require several temporary variables as above, or
 deep function nesting, to perform multiple operations on a table. TaDa
 provides a `chain` function to make this easier. Furthermore, when you
-need to compute several fields at once and don't need extra field
+need to compute several fields at once and don’t need extra field
 information, you can use `add-expressions` as a shorthand:
 
 ``` typst
@@ -415,7 +413,7 @@ information, you can use `add-expressions` as a shorthand:
 )
 #to-tablex(totals)
 ```
-![Example 15](https://raw.githubusercontent.com/ntjess/typst-tada/v0.1.0/assets/example-15.png)
+![Example 15](https://www.github.com/ntjess/typst-tada/raw/v0.1.0/assets/example-15.png)
 
 ## Sorting
 
@@ -429,7 +427,7 @@ behavior further:
   td, by: "quantity", descending: true
 ))
 ```
-![Example 16](https://raw.githubusercontent.com/ntjess/typst-tada/v0.1.0/assets/example-16.png)
+![Example 16](https://www.github.com/ntjess/typst-tada/raw/v0.1.0/assets/example-16.png)
 
 ## Aggregation
 
@@ -450,7 +448,7 @@ or string expressions:
   *Grand total: #tada.display.format-usd(grand-total)*
 ]
 ```
-![Example 17](https://raw.githubusercontent.com/ntjess/typst-tada/v0.1.0/assets/example-17.png)
+![Example 17](https://www.github.com/ntjess/typst-tada/raw/v0.1.0/assets/example-17.png)
 
 It is also easy to aggregate several expressions at once:
 
@@ -462,4 +460,4 @@ It is also easy to aggregate several expressions at once:
 #let agg-td = tada.agg(td, ..agg-exprs)
 #to-tablex(agg-td)
 ```
-![Example 18](https://raw.githubusercontent.com/ntjess/typst-tada/v0.1.0/assets/example-18.png)
+![Example 18](https://www.github.com/ntjess/typst-tada/raw/v0.1.0/assets/example-18.png)

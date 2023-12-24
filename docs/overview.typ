@@ -1,17 +1,18 @@
 #import "../lib.typ"
+// https://github.com/ntjess/showman.git
+#import "@local/showman:0.1.0": formatter
+
 // Use "let =" instead of "import as" to be compatible with pandoc 3.1.10
 #let tada = lib
 #let DEFAULT-TYPE-FORMATS = tada.display.DEFAULT-TYPE-FORMATS
-#import "docutils.typ": template
 
-#show: template.with(
-  // theme: "dark",
+#show: formatter.template.with(
+  // theme: "dark ",
   eval-kwargs: (
     direction: ltr,
     scope: (tada: tada),
+    eval-prefix: "#let to-tablex(it) = output(tada.to-tablex(it))",
   ),
-  global-example-prefix-initializer: "#let to-tablex = output",
-  global-example-prefix-finalizer: "#let to-tablex = tada.to-tablex",
 )
 
 = Overview
@@ -65,16 +66,15 @@ Then import the functionality with
 ```typst #import "./tada/lib.typ" ```
 
 *Option 2:* If Python is available on your system,
-  use the provided packaging script to install TaDa in typst's `local` directory:
+  use `showman` to install TaDa in typst's `local` directory:
   ```bash
   # Anywhere on your system
   git clone https://github.com/ntjess/typst-tada.git
   cd typst-tada
   
-  # Replace $XDG_CACHE_HOME with the appropriate directory based on
-  # https://github.com/typst/packages#downloads
-  python package.py ./typst.toml "$XDG_CACHE_HOME/typst/packages" \
-    --namespace local
+  # Can be done in a virtual environment
+  pip install "git+https://github.com/ntjess/showman.git"
+  showman package ./typst.toml
   ``` 
   Now, TaDa is available under the local namespace:
 

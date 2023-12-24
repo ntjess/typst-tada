@@ -2,131 +2,112 @@ from __future__ import annotations
 
 import json
 import os
-import re
-import shutil
+import sys
 import subprocess
 from contextlib import redirect_stdout
 from io import StringIO
 from pathlib import Path
-from tempfile import TemporaryDirectory
 
-DEFAULT_LABEL = "py-code"
-
-
-def get_python_blocks(file: str | Path, label: str | None = None):
-    """
-    Retrieves the python code blocks from a typ file requested to be run based on their
-    label.
-
-    Parameters
-    ----------
-    file:
-        The typst file to be queried
-    label:
-        The label of the blocks to be retrieved. Defaults to "py-code"
-    concatenate:
-        Whether to concatenate the blocks into a single python runnable string. Otherwise,
-        returns an array of individual code blocks found in the file.
-    """
-    if label is None:
-        label = DEFAULT_LABEL
-    cmd = (
-        f"typst-ts-cli query"
-        f' --entry "{Path(file).resolve()}"'
-        f' --selector "<{label}>"'
-        f" --field value"
-        f" --format json"
-    )
-    workspace_dir = os.getcwd()
-    result = json.loads(
-        subprocess.check_output(cmd, cwd=workspace_dir, shell=True, text=True)
-    )
-    return result
+import logging
 
 
-def _format_text_for_cell(text):
-    """
-    Formats text to be inserted into a cell. This is a workaround for the fact that
-    raw formatting can't be applied to content, so explicitly surround in newlines
-    and triple quotes instead.
-    """
-    if not text.strip():
-        return ""
-    if text[0] != "\n":
-        text = "\n" + text
-    if text[-1] != "\n":
-        text += "\n"
-    return f"```console{text}```"
+class CodeRunner:
+    def __init__(self, workspace_dir: str | Path):
+        self.workspace_dir = Path(workspace_dir).resolve()
+        self.logger = logging.getLogger(__name__)
 
+        self.cache_file = cache_file = self.workspace_dir / ".coderunner.json"
+        if not cache_file.exists():
+            self.workspace_cache = {}
+            self.cache_file.write_text("{}")
+        else:
+            with open(cache_file, "r") as f:
+                self.workspace_cache = json.load(f)
 
-def replace_output_blocks(
-    file: str | Path, outputs: list[str], output_locations: list[dict], backup=True
-):
-    """
-    Replaces the output blocks in a typst file with the outputs from a python session.
+    def get_cache_key(self, file: str | Path):
+        file = Path(file).resolve()
+        if self.workspace_dir not in file.parents:
+            raise ValueError(f"File {file} is not in workspace {self.workspace_dir}")
+        return file.relative_to(self.workspace_dir).as_posix()
 
-    Parameters
-    ----------
-    file:
-        The typst file to be queried
-    outputs:
-        A list of outputs to be inserted into the typst file
-    output_locations:
-        A list of {start_row: int, start_col: int, end_row: int, end_col: int} objects
-        representing the locations of the output blocks in the typst file
-    """
-    file = Path(file)
-    with open(file) as f:
-        lines = f.readlines()
-    if backup:
-        shutil.copy(file, file.with_suffix(file.suffix + ".bak"))
-    # Reverse the order of the outputs and locations so earlier location indexes
-    # still make sense
-    for text, location in list(zip(outputs, output_locations))[::-1]:
-        start_row, start_col, end_row, end_col = (
-            location[key] for key in ["start_row", "start_col", "end_row", "end_col"]
+    def get_cache_value(self, file: str | Path, return_key=False):
+        rel_file = self.get_cache_key(file)
+        if rel_file not in self.workspace_cache:
+            self.workspace_cache[rel_file] = {}
+        out = self.workspace_cache[rel_file].copy()
+        if return_key:
+            return out, rel_file
+        return out
+
+    def update_cache(self, file: str | Path, label: str, outputs: list[str]):
+        file_cache, key = self.get_cache_value(file, return_key=True)
+        file_cache[label] = outputs
+
+        self.workspace_cache[key][label] = outputs
+
+    def save_cache(self):
+        with open(self.cache_file, "w") as f:
+            json.dump(self.workspace_cache, f)
+
+    def get_labeled_blocks(self, file: str | Path, label: str):
+        """
+        Retrieves the python code blocks from a typ file requested to be run based on their
+        label.
+
+        Parameters
+        ----------
+        file:
+            The typst file to be queried
+        label:
+            The label of the blocks to be retrieved
+        concatenate:
+            Whether to concatenate the blocks into a single python runnable string. Otherwise,
+            returns an array of individual code blocks found in the file.
+        """
+        workspace_dir = os.getcwd()
+        cmd = (
+            f"typst query"
+            f' "{Path(file).resolve()}"'
+            f' "<{label}>"'  # Selector
+            f" --field value"
+            f" --format json"
+            f" --root {workspace_dir}"
         )
-        text = _format_text_for_cell(text)
-        lines[start_row - 1] = (
-            lines[start_row - 1][: start_col + 1]
-            + text
-            + lines[end_row - 1][end_col - 1 :]
-        )
-        lines = lines[:start_row] + lines[end_row:]
+        self.logger.debug(f"Running command: {cmd}")
+        workspace_dir = os.getcwd()
+        result = json.loads(subprocess.check_output(cmd, shell=True, text=True))
+        return result
 
-    with open(file, "w") as f:
-        f.write("".join(lines))
+    def exec_blocks_and_capture_outputs(self, blocks: list[str]):
+        """
+        Evaluates a list of python code blocks in a single python session. stdout from each
+        block evaluation is separately captured.
 
+        Parameters
+        ----------
+        blocks:
+            A list of python code blocks to be evaluated
 
-def exec_blocks_and_capture_outputs(blocks: list[str], print_blocks=False):
-    """
-    Evaluates a list of python code blocks in a single python session. stdout from each
-    block evaluation is separately captured.
+        Returns
+        -------
+        A list of stdout outputs from each block evaluation
+        """
+        outputs = []
+        for block in blocks:
+            with redirect_stdout(StringIO()) as f:
+                self.logger.debug(f"Executing block:\n{block}")
+                exec(block, globals())
+                out = f.getvalue()
+                self.logger.debug(f"Block output: {out}")
+                outputs.append(out)
+        return outputs
 
-    Parameters
-    ----------
-    blocks:
-        A list of python code blocks to be evaluated
-
-    Returns
-    -------
-    A list of stdout outputs from each block evaluation
-    """
-    outputs = []
-    for block in blocks:
-        if print_blocks:
-            print(block)
-        with redirect_stdout(StringIO()) as f:
-            exec(block, globals())
-            outputs.append(f.getvalue())
-    return outputs
-
-
-def main(file):
-    blocks = get_python_blocks(file)
-    outputs = exec_blocks_and_capture_outputs(blocks)
-    output_locations = get_output_locations(file)
-    replace_output_blocks(file, outputs, output_locations)
+    def run(self, typst_file: str | Path, label: str, save_cache=True):
+        blocks = self.get_labeled_blocks(typst_file, label=label)
+        outputs = self.exec_blocks_and_capture_outputs(blocks)
+        self.update_cache(typst_file, label, outputs)
+        if save_cache:
+            self.save_cache()
 
 
 def main_cli():
@@ -136,7 +117,10 @@ def main_cli():
     parser.add_argument("file")
     args = parser.parse_args()
 
-    main(args.file)
+    runner = CodeRunner(os.getcwd())
+    # runner.logger.setLevel("DEBUG")
+    runner.logger.addHandler(logging.StreamHandler(sys.stdout))
+    runner.run(args.file, label="python", save_cache=True)
 
 
 if __name__ == "__main__":

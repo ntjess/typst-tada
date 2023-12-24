@@ -1,7 +1,8 @@
 #import "@preview/tidy:0.1.0"
-#import "docutils.typ": *
 #import "../lib.typ" as tada
 #import "_doc-style.typ"
+// https://github.com/ntjess/showman.git
+#import "@local/showman:0.1.0": formatter
 
 #let _HEADING-LEVEL = 1
 
@@ -14,7 +15,7 @@
 #include("./overview.typ")
 
 // overview applies its own template show, so scope this only to the module docs
-#show: template.with(
+#show: formatter.template.with(
   // theme: "dark",
   eval-kwargs: (
     direction: ltr,

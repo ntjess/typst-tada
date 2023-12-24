@@ -1,51 +1,50 @@
-#import "../docs/docutils.typ": template, external-code
+// https://github.com/ntjess/showman.git
+#import "@local/showman:0.1.0": runner, formatter
+
 #import "../lib.typ" as tada
 
-#show: template.with(
-  theme: "dark",
+// redefine to ensure path is read here instead of from showman executor
+#let local-csv(path) = csv(path)
+#show: formatter.template.with(
+  // theme: "dark",
   eval-kwargs: (
-    scope: (tada: tada),
+    scope: (tada: tada, csv: local-csv),
+    eval-prefix: "#let to-tablex(it) = output(tada.to-tablex(it))",
     direction: ltr,
   ),
-  global-example-prefix-initializer: "#let to-tablex = output",
-  global-example-prefix-finalizer: "#let to-tablex = tada.to-tablex",
 )
+
+#let cache = json("/.coderunner.json").at("examples/titanic.typ", default: (:))
+#show raw.where(lang: "python"): runner.external-code.with(result-cache: cache)
+
 #set page(margin: 0.7in, height: auto)
 
 = Poking around the `titanic` dataset
 == First in Python
 
-#external-code[```python
+```python
 import requests
 from pathlib import Path
 
 def download(url, output_file):
-    r = requests.get(url)
-    with open(output_file, "wb") as f:
-        f.write(r.content)
+    if not Path(output_file).exists():
+        r = requests.get(url)
+        with open(output_file, "wb") as f:
+            f.write(r.content)
     print("Download finished")
 
 download("https://web.stanford.edu/class/archive/cs/cs109/cs109.1166/stuff/titanic.csv", "examples/titanic.csv")
-```]
-```console
-Download finished
 ```
 
-#external-code[```python
+```python
 import pandas as pd
 df = pd.read_csv("examples/titanic.csv")
 df["Name"] = df["Name"].str.split(" ").str.slice(0, 3).str.join(" ")
 df = df.drop(df.filter(like="Aboard", axis=1).columns, axis=1)
+
 print(df.head(5))
-```]
-```console
-   Survived  Pclass                   Name     Sex   Age     Fare
-0         0       3        Mr. Owen Harris    male  22.0   7.2500
-1         1       1      Mrs. John Bradley  female  38.0  71.2833
-2         1       3  Miss. Laina Heikkinen  female  26.0   7.9250
-3         1       1     Mrs. Jacques Heath  female  35.0  53.1000
-4         0       3      Mr. William Henry    male  35.0   8.0500
 ```
+
 = Can we do it in Typst?
 
 ```globalexample
