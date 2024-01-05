@@ -6,7 +6,7 @@
 // redefine to ensure path is read here instead of from showman executor
 #let local-csv(path) = csv(path)
 #show: formatter.template.with(
-  // theme: "dark",
+  theme: "dark",
   eval-kwargs: (
     scope: (tada: tada, csv: local-csv),
     eval-prefix: "#let to-tablex(it) = output(tada.to-tablex(it))",
