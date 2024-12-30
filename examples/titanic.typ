@@ -1,22 +1,24 @@
 
 // https://github.com/ntjess/showman.git
-#import "@local/showman:0.1.0": runner, formatter
+#import "@preview/showman:0.1.2": runner, formatter
 
 #import "../lib.typ" as tada
 
 // redefine to ensure path is read here instead of from showman executor
 #let local-csv(path) = csv(path)
-#show: formatter.template.with(
-  theme: "dark",
+#let template = formatter.template.with(
+  // theme: "dark",
   eval-kwargs: (
     scope: (tada: tada, csv: local-csv),
     eval-prefix: "#let to-table(it) = output(tada.to-table(it))",
     direction: ltr,
   ),
 )
+#show: template
 
 #let cache = json("/.coderunner.json").at("examples/titanic.typ", default: (:))
-#show raw.where(lang: "python"): runner.external-code.with(result-cache: cache)
+#show raw.where(lang: "python"): runner.external-code.with(result-cache: cache, direction: ttb)
+#show <example-output>: set text(font: "Libertinus serif")
 
 #set page(margin: 0.7in, height: auto)
 
@@ -77,17 +79,17 @@ print(df.head(5))
 
 == Make it prettier
 ```globalexample
-#let row-fmt(index, row) = {
+#let fill(x, y) = {
   let fill = none
-  if index == 0 {
+  if y == 0 {
     fill = rgb("#8888")
-  } else if calc.odd(index) {
+  } else if calc.odd(y) {
     fill = rgb("#1ea3f288")
   }
-  row.map(cell => (..cell, fill: fill))
+  fill
 }
 #let title-fmt(name) = heading(outlined: false, name)
-#td.table-kwargs.insert("map-rows", row-fmt)
+#td.table-kwargs.insert("fill", fill)
 #td.field-defaults.insert("title", title-fmt)
 #to-table(subset(td, fields: ("Name", "Age", "Fare"), indexes: range(0, 5)))
 ```
