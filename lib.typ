@@ -4,21 +4,19 @@
 #import "src/helpers.typ"
 
 #import display: to-table
-#(
-  import tabledata: (
-    add-expressions,
-    count,
-    drop,
-    from-columns,
-    from-rows,
-    from-records,
-    item,
-    stack,
-    subset,
-    TableData,
-    transpose,
-    update-fields,
-  )
+#import tabledata: (
+  add-expressions,
+  count,
+  drop,
+  from-columns,
+  from-rows,
+  from-records,
+  item,
+  stack,
+  subset,
+  TableData,
+  transpose,
+  update-fields,
 )
 #import ops: agg, chain, filter, group-by, sort-values
 
