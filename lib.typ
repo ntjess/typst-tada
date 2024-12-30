@@ -3,8 +3,8 @@
 #import "src/display.typ"
 #import "src/helpers.typ"
 
-#import display: to-tablex
-#(import tabledata: 
+#import display: to-table
+#import tabledata: (
   add-expressions,
   count,
   drop,
@@ -16,7 +16,7 @@
   subset,
   TableData,
   transpose,
-  update-fields
+  update-fields,
 )
 #import ops: agg, chain, filter, group-by, sort-values
 

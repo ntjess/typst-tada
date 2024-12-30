@@ -16,9 +16,7 @@
 }
 
 #let _eval-expressions(data, field-info) = {
-  let computed-fields = field-info.keys().filter(
-    key => "expression" in field-info.at(key)
-  )
+  let computed-fields = field-info.keys().filter(key => "expression" in field-info.at(key))
   if computed-fields.len() == 0 {
     return (data, field-info)
   }
@@ -39,7 +37,10 @@
       let expr = field-info.at(key).at("expression")
       let default-scope = field-info.at(key).at("scope", default: (:))
       let value = H.eval-str-or-function(
-        expr, scope: default-scope + scope, mode: "code", keyword: scope
+        expr,
+        scope: default-scope + scope,
+        mode: "code",
+        keyword: scope,
       )
       out-data.at(key).push(value)
       // In case this field is referenced by another expression
@@ -87,7 +88,7 @@
       data.insert(field, existing-info.remove("values"))
     }
     let type-str = existing-info.at("type", default: field-defaults.at("type", default: auto))
-    if type-str == auto{
+    if type-str == auto {
       type-str = _infer-field-type(field, data.at(field))
     }
     let type-info = DEFAULT-TYPE-FORMATS + type-info
@@ -108,7 +109,7 @@
   (field-info, data)
 }
 
-#let _validate-td-args(data, field-info, type-info, field-defaults, tablex-kwargs) = {
+#let _validate-td-args(data, field-info, type-info, field-defaults, table-kwargs) = {
   // dict of lists
   // (field: (a, b, c), field2: (5, 10, 15), ...)
   H.assert-is-type(data, dictionary, "data")
@@ -128,54 +129,62 @@
   H.assert-is-type(field-defaults, dictionary, "field-defaults")
   // dict of values
   // (auto-vlines: false, map-rows: () => {}, ...)
-  H.assert-is-type(tablex-kwargs, dictionary, "tablex-kwargs")
+  H.assert-is-type(table-kwargs, dictionary, "table-kwargs")
 }
 
-/// Constructs a TableData object from a dictionary of columnar data. See examples in
+/// Constructs a @TableData object from a dictionary of columnar data. See examples in
 /// the overview above for metadata examples.
-///
-/// - data (dictionary): A dictionary of arrays, each representing a column of data. Every
-///   column must have the same length. Missing values are represented by `none`.
-/// - field-info (dictionary): A dictionary of dictionaries, each representing the properties
-///   of a field. The keys of the outer dictionary must match the keys of `data`. The keys of
-///   the inner dictionaries are all optional and can contain:
-///   - `type` (string): The type of the field. Must be one of the keys of `type-info`.
-///     Defaults to `auto`, which will attempt to infer the type from the data.
-///   - `title` (string): The title of the field. Defaults to the field name, title-cased.
-///   - `display` (string): The display format of the field. Defaults to the display format
-///     for the field's type.
-///   - `expression` (string, function): A string or function containing a Python expression that will be evaluated
-///     for each row to compute the value of the field. The expression can reference any
-///     other field in the table by name.
-///   - `hide` (boolean): Whether to hide the field from the table. Defaults to `false`.
-/// - type-info (dictionary): A dictionary of dictionaries, each representing the properties
-///   of a type. These properties will be populated for a field if its type is given in
-///   `field-info` and the property is not specified already.
-/// - field-defaults (dictionary): Default values for every field if not specified in
-///   `field-info`.
-/// - tablex-kwargs (dictionary): Keyword arguments to pass to `tablex()`.
-/// - ..reserved (dictionary): Reserved for future use; currently discarded.
+/// -> TableData
 #let TableData(
+  /// A dictionary of arrays, each representing a column of data. Every column must have
+  /// the same length. Missing values are represented by `none`.
+  /// -> dictionary
   data: none,
+  /// A dictionary of dictionaries, each representing the properties of a field. The keys
+  /// of the outer dictionary must match the keys of `data`. The keys of the inner
+  /// dictionaries are all optional and can contain:
+  /// A dictionary of dictionaries, each representing the properties of a field. The keys
+  /// of the outer dictionary must match the keys of `data`. The keys of the inner
+  /// dictionaries are all optional and can contain:
+  /// - `type` (string): The type of the field. Must be one of the keys of `type-info`.
+  ///   Defaults to `auto`, which will attempt to infer the type from the data.
+  /// - `title` (string): The title of the field. Defaults to the field name, title-cased.
+  /// - `display` (string): The display format of the field. Defaults to the display format
+  ///   for the field's type.
+  /// - `expression` (string, function): A string or function containing a Python expression that will be evaluated
+  ///   for each row to compute the value of the field. The expression can reference any
+  ///   other field in the table by name.
+  /// - `hide` (boolean): Whether to hide the field from the table. Defaults to `false`.
+  /// -> dictionary
   field-info: (:),
+  /// A dictionary of dictionaries, each representing the properties of a type. These
+  /// properties will be populated for a field if its type is given in `field-info` and the
+  /// property is not specified already.
+  /// -> dictionary
   type-info: (:),
+  /// Default values for every field if not specified in `field-info`.
+  /// -> dictionary
   field-defaults: (:),
-  tablex-kwargs: (:),
-  ..reserved
+  /// Keyword arguments to pass to `table()`. -> dictionary
+  table-kwargs: (:),
+  /// Reserved for future use; currently discarded.
+  ..reserved,
 ) = {
   if reserved.pos().len() > 0 {
     panic("TableData() doesn't accept positional arguments")
   }
-  _validate-td-args(data, field-info, type-info, field-defaults, tablex-kwargs)
+  _validate-td-args(data, field-info, type-info, field-defaults, table-kwargs)
   let n-rows = _get-n-rows(data)
   let initial-index = data.at("__index", default: range(_get-n-rows(data)))
-  let index = initial-index.enumerate().map(idx-val => {
-    let (ii, value) = idx-val
-    if value == none {
-      value = ii
-    }
-    value
-  })
+  let index = initial-index
+    .enumerate()
+    .map(idx-val => {
+      let (ii, value) = idx-val
+      if value == none {
+        value = ii
+      }
+      value
+    })
   // Preserve ordering if the user specified an index, otherwise put at the front
   if "__index" in data {
     data.__index = index
@@ -185,13 +194,13 @@
 
   (data, field-info) = _eval-expressions(data, field-info)
   (field-info, data) = _resolve-field-info(field-info, field-defaults, type-info, data)
-  
+
   (
     data: data,
     field-info: field-info,
     type-info: type-info,
     field-defaults: field-defaults,
-    tablex-kwargs: tablex-kwargs,
+    table-kwargs: table-kwargs,
   )
 }
 
@@ -206,14 +215,14 @@
   return field-info
 }
 
-/// Constructs a TableData object from a list of column-oriented data and their field info.
+/// Constructs a @TableData object from a list of column-oriented data and their field info.
 ///
 /// ```example
 /// #let data = (
 ///   (1, 2, 3),
 ///   (4, 5, 6),
 /// )
-/// #let mk-tbl(..args) = to-tablex(from-columns(..args))
+/// #let mk-tbl(..args) = to-table(from-columns(..args))
 /// #set align(center)
 /// #grid(columns: 2, column-gutter: 1em)[
 ///   Auto names:
@@ -223,15 +232,19 @@
 ///   #mk-tbl(data, field-info: ("a", "b"))
 /// ]
 /// ```
-///
-/// - columns (array): A list of arrays, each representing a column of data. Every column
-///   must have the same length and columns.len() must match field-info.keys().len()
-/// - field-info (dictionary,array): See the `field-info` argument to @@TableData for
-///   handling dictionary types. If an array is passed, it is converted to a dictionary
-///   of (key1: (:), ...).
-/// - ..metadata (dictionary): Forwarded directly to @@TableData
 /// -> TableData
-#let from-columns(columns, field-info: auto, ..metadata) = {
+#let from-columns(
+  /// A list of arrays, each representing a column of data. Every column must have the
+  /// same length and columns.len() must match field-info.keys().len()
+  /// -> array
+  columns,
+  /// See the `field-info` argument to @TableData for handling dictionary types. If an
+  /// array is passed, it is converted to a dictionary of (key1: (:), ...).
+  /// -> dictionary
+  field-info: auto,
+  /// Forwarded directly to @TableData -> dictionary
+  ..metadata,
+) = {
   if metadata.pos().len() > 0 {
     panic("from-columns() only accepts one positional argument")
   }
@@ -239,52 +252,63 @@
   if field-info.keys().len() != columns.len() {
     panic(
       "When creating a TableData from rows or columns, the number of fields must match "
-      + "the number of columns, got: " + repr(field-info.keys()) + " fields and "
-      + repr(columns.len()) + " columns"
+        + "the number of columns, got: "
+        + repr(field-info.keys())
+        + " fields and "
+        + repr(columns.len())
+        + " columns",
     )
   }
   let data = H.dict-from-pairs(field-info.keys().zip(columns))
   TableData(data: data, field-info: field-info, ..metadata)
 }
 
-/// Constructs a TableData object from a list of row-oriented data and their field info.
+/// Constructs a @TableData object from a list of row-oriented data and their field info.
 ///
 /// ```example
 /// #let data = (
 ///   (1, 2, 3),
 ///   (4, 5, 6),
 /// )
-/// #to-tablex(from-rows(data, field-info: ("a", "b", "c")))
+/// #to-table(from-rows(data, field-info: ("a", "b", "c")))
 /// ```
-///
-/// - rows (array): A list of arrays, each representing a row of data. Every row must have
-///   the same length and rows.at(0).len() must match field-info.keys().len()
-/// - field-info (dictionary, array): See the `field-info` argument to @@from-columns()
-/// - ..metadata (dictionary): Forwarded directly to @@TableData
-#let from-rows(rows, field-info: auto, ..metadata) = {
+/// -> TableData
+#let from-rows(
+  /// A list of arrays, each representing a row of data. Every row must have the same
+  /// length and rows.at(0).len() must match field-info.keys().len()
+  /// -> array
+  rows,
+  /// See the `field-info` to @from-columns() -> dictionary
+  field-info: auto,
+  /// Forwarded directly to @TableData -> dictionary
+  ..metadata,
+) = {
   from-columns(H.transpose-values(rows), field-info: field-info, ..metadata)
 }
 
 
-/// Constructs a TableData object from a list of records.
-/// 
+/// Constructs a @TableData object from a list of records.
+///
 /// A record is a dictionary of key-value pairs, Records may contain different keys, in
-/// which case the resulting @@TableData will contain the union of all keys present with
+/// which case the resulting @TableData will contain the union of all keys present with
 /// `none` values for missing keys.
-/// 
+///
 /// ```example
 /// #let records = (
 ///   (a: 1, b: 2),
 ///   (a: 3, c: 4),
 /// )
-/// #to-tablex(from-records(records))
+/// #to-table(from-records(records))
 /// ```
-/// 
-/// - records (array): A list of dictionaries, each representing a record. Every record must
-///   have the same keys.
-/// - ..metadata (dictionary): Forwarded directly to @@TableData
 /// -> TableData
-#let from-records(records, ..metadata) = {
+#let from-records(
+  /// A list of dictionaries, each representing a record. Every record must have the same
+  /// keys.
+  /// -> array
+  records,
+  /// Forwarded directly to @TableData -> dictionary
+  ..metadata,
+) = {
   H.assert-is-type(records, array, "records")
   H.assert-list-of-type(records, dictionary, "records")
   let encountered-keys = H.unique-record-keys(records)
@@ -297,43 +321,43 @@
   TableData(data: data, ..metadata)
 }
 
-/// Extracts a single value from a @@TableData that has exactly one field and one row.
-/// 
+/// Extracts a single value from a @TableData that has exactly one field and one row.
+///
 /// ```example
 /// #let td = TableData(data: (a: (1,)))
 /// #item(td)
 /// ```
-/// 
-/// - td (TableData): The table to extract a value from
 /// -> any
-#let item(td) = {
+#let item(
+  /// The table to extract a value from -> TableData
+  td,
+) = {
   let filtered = H.remove-internal-fields(td.data)
   if filtered.keys().len() != 1 {
-    panic(
-      "TableData must have exactly one field to call .item(), got: " + repr(td.data.keys())
-    )
+    panic("TableData must have exactly one field to call .item(), got: " + repr(td.data.keys()))
   }
   let values = filtered.values().at(0)
   if values.len() != 1 {
-    panic(
-      "TableData must have exactly one row to call .item(), got: " + repr(values.len())
-    )
+    panic("TableData must have exactly one row to call .item(), got: " + repr(values.len()))
   }
   values.at(0)
 }
 
-/// Creates a new @@TableData with only the specified fields and/or indexes.
-///  
+/// Creates a new @TableData with only the specified fields and/or indexes.
+///
 /// ```example
 /// #let td = TableData(data: (a: (1, 2), b: (3, 4), c: (5, 6)))
-/// #to-tablex(subset(td, fields: ("a", "c"), indexes: (0,)))
+/// #to-table(subset(td, fields: ("a", "c"), indexes: (0,)))
 /// ```
-/// 
-/// - td (TableData): The table to subset
-/// - fields (array, str): The field or fields to keep. If `auto`, all fields are kept.
-/// - indexes (array, int): The index or indexes to keep. If `auto`, all indexes are kept.
 /// -> TableData
-#let subset(td, indexes: auto, fields: auto) = {
+#let subset(
+  /// The table to subset -> TableData
+  td,
+  /// The field or fields to keep. If `auto`, all fields are kept -> array | str | auto
+  indexes: auto,
+  /// The index or indexes to keep. If `auto`, all indexes are kept -> array | int | auto
+  fields: auto,
+) = {
   let (data, field-info) = (td.data, td.field-info)
   if type(indexes) == int {
     indexes = (indexes,)
@@ -351,31 +375,29 @@
     let keep-mask = index.map(ii => ii in indexes)
     let out = (:)
     for (field, values) in data {
-      out.insert(field, values.zip(keep-mask)
-        .filter(pair => pair.at(1))
-        .map(pair => pair.at(0))
-      )
+      out.insert(field, values.zip(keep-mask).filter(pair => pair.at(1)).map(pair => pair.at(0)))
     }
     data = out
   }
   return TableData(..td, data: data, field-info: field-info)
 }
 
-/// Similar to @@subset(), but drops the specified fields and/or indexes instead of
+/// Similar to @subset, but drops the specified fields and/or indexes instead of
 /// keeping them.
-/// 
+///
 /// ```example
 /// #let td = TableData(data: (a: (1, 2), b: (3, 4), c: (5, 6)))
-/// #to-tablex(drop(td, fields: ("a", "c"), indexes: (0,)))
+/// #to-table(drop(td, fields: ("a", "c"), indexes: (0,)))
 /// ```
-/// 
-/// - td (TableData): The table to subset
-/// - fields (array, str): Single string or array of strings with the fields to drop.
-///   If `auto`, no fields are dropped.
-/// - indexes (array): Single int or array of ints with the indexes to drop. If `auto`,
-///   no indexes are dropped.
 /// -> TableData
-#let drop(td, fields: none, indexes: none) = {
+#let drop(
+  /// The table to drop fields from -> TableData
+  td,
+  /// The field or fields to drop. If `auto`, no fields are dropped -> array | str | auto
+  fields: none,
+  /// The index or indexes to drop. If `auto`, no indexes are dropped -> array | int | auto
+  indexes: none,
+) = {
   let keep-keys = auto
   if fields != none {
     if type(fields) == str {
@@ -397,19 +419,24 @@
 ///
 /// ```example
 /// #let td = TableData(data: (a: (1, 2), b: (3, 4), c: (5, 6)))
-/// #to-tablex(transpose(td))
+/// #to-table(transpose(td))
 /// ```
-///
-/// - td (TableData): The table to transpose
-/// - fields-name (str): The name of the field containing the new field names. If `none`,
-///   the new fields are named `0`, `1`, etc.
-/// - ignore-types (boolean): Whether to ignore the types of the original table and
-///   instead use `content` for all fields. This is useful when not all columns have the
-///   same type, since a warning will occur when multiple types are encountered in the same
-///   field otherwise.
-/// - ..metadata (dictionary): Forwarded directly to @@TableData
 /// -> TableData
-#let transpose(td, fields-name: none, ignore-types: false, ..metadata) = {
+#let transpose(
+  /// - td (TableData): The table to transpose
+  td,
+  /// The name of the field containing the new field names. If `none`, the new fields
+  /// are named `0`, `1`, etc.
+  /// -> str | none
+  fields-name: none,
+  /// Whether to ignore the types of the original table and instead use `content` for
+  /// all fields. This is useful when not all columns have the same type, since a warning
+  /// will occur when multiple types are encountered in the same field otherwise.
+  /// -> bool
+  ignore-types: false,
+  /// Forwarded directly to @TableData -> dictionary
+  ..metadata,
+) = {
   let new-keys = td.data.at("__index").map(str)
   let filtered = H.remove-internal-fields(td.data)
   let new-values = H.transpose-values(filtered.values())
@@ -436,11 +463,15 @@
   let missing-fields = b.keys().filter(key => key not in a)
   if missing-fields.len() > 0 and missing-fill == auto {
     panic(
-      "No fill value was specified, yet `" + a-name + "` contains fields not in `" + b-name + "`: "
-      + repr(missing-fields)
+      "No fill value was specified, yet `"
+        + a-name
+        + "` contains fields not in `"
+        + b-name
+        + "`: "
+        + repr(missing-fields),
     )
   }
-  let fill-arr = (missing-fill, ) * _get-n-rows(a)
+  let fill-arr = (missing-fill,) * _get-n-rows(a)
   a = a + H.default-dict(missing-fields, value: fill-arr)
   a
 }
@@ -472,11 +503,17 @@
   let (a-rows, b-rows) = (_get-n-rows(a), _get-n-rows(b))
   if _get-n-rows(a) < _get-n-rows(b) {
     panic(
-      "No fill value was specified, yet `" + a-name + "` has fewer rows than `" + b-name + "`: "
-      + repr(a-rows) + " vs " + repr(b-rows)
+      "No fill value was specified, yet `"
+        + a-name
+        + "` has fewer rows than `"
+        + b-name
+        + "`: "
+        + repr(a-rows)
+        + " vs "
+        + repr(b-rows),
     )
   }
-  let pad-arr = (missing-fill, ) * (b-rows - a-rows)
+  let pad-arr = (missing-fill,) * (b-rows - a-rows)
   for key in a.keys() {
     a.insert(key, a.at(key) + pad-arr)
   }
@@ -489,7 +526,8 @@
   if overlapping-fields.len() > 0 {
     panic(
       "Can't stack `td` and `other` column-wise because they have overlapping fields: "
-      + repr(overlapping-fields) + ". Either remove or rename these fields before stacking."
+        + repr(overlapping-fields)
+        + ". Either remove or rename these fields before stacking.",
     )
   }
   let data = _ensure-a-has-at-least-b-rows(td, other, "td", "other", missing-fill: missing-fill)
@@ -506,9 +544,9 @@
 /// #let td = TableData(data: (a: (1, 2), b: (3, 4)))
 /// #let other = TableData(data: (c: (7, 8), d: (9, 10)))
 /// #grid(columns: 2, column-gutter: 1em)[
-///   #to-tablex(stack(td, other, axis: 1))
+///   #to-table(stack(td, other, axis: 1))
 /// ][
-///   #to-tablex(stack(
+///   #to-table(stack(
 ///     td, other, axis: 0, missing-fill: -4
 ///   ))
 /// ]
@@ -545,11 +583,19 @@
 
 /// Shorthand to easily compute expressions on a table.
 ///
-/// - td (TableData): The table to compute expressions on
-/// - ..expressions (any): An array of expressions to compute.
-///   - Positional arguments are converted to (`value`: (expression: `value`))
-///   - Named arguments are converted to (`key`: (expression: `value`))
-#let add-expressions(td, ..expressions) = {
+/// ```example
+/// #let td = TableData(data: (a: (1, 2, 3)))
+/// #to-table(add-expressions(td, b: `a + 1`))
+/// ```
+#let add-expressions(
+  /// The table to add expressions to -> TableData
+  td,
+  /// An array of expressions to compute.
+  /// - Positional arguments are converted to (`value`: (expression: `value`))
+  /// - Named arguments are converted to (`key`: (expression: `value`))
+  /// -> any
+  ..expressions,
+) = {
   let info = (:)
   for expr in expressions.pos() {
     info.insert(expr, (expression: expr))
@@ -560,17 +606,18 @@
   update-fields(td, ..info)
 }
 
-/// Returns a @@TableData with a single `count` column and one value -- the number of
+/// Returns a @TableData with a single `count` column and one value -- the number of
 /// rows in the table.
 ///
 /// ```example
 /// #let td = TableData(data: (a: (1, 2, 3), b: (3, 4, none)))
-/// #to-tablex(count(td))
+/// #to-table(count(td))
 /// ```
-///
-/// - td (TableData): The table to count
 /// -> TableData
-#let count(td) = {
+#let count(
+  /// The table to count -> TableData
+  td,
+) = {
   TableData(
     ..td,
     data: (count: (_get-n-rows(td.data),)),
