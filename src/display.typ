@@ -10,17 +10,19 @@
 /// #format-float(123456.1121, precision: 1, hundreds-separator: "_")
 /// ```
 ///
-/// - hundreds-separator (auto,str): The character to use to separate hundreds
-/// - decimal (auto,str): The character to use to separate the integer and fractional portions
-/// - precision (none,int): The number of digits to show after the decimal point. If `none`,
-///   then no rounding will be done.
-/// - pad (bool): If true, then the fractional portion will be padded with zeros to match the
-///   precision if needed.
 /// -> str
-#let format-float(number,
+#let format-float(
+  /// The number to convert -> number
+  number,
+  /// The character to use to separate hundreds -> str | auto
   hundreds-separator: auto,
+  /// The character to use to separate the integer and fractional portions -> str | auto
   decimal: auto,
+  /// The number of digits to show after the decimal point. If `none`, then no rounding will be done.
+  /// -> int | none
   precision: none,
+  /// If true, then the fractional portion will be padded with zeros to match the precision if needed.
+  /// -> bool
   pad: false,
 ) = {
   // Adds commas after each 3 digits to make
@@ -71,16 +73,18 @@
 /// #format-usd(12.323)\
 /// #format-usd(-12500.29)
 /// ```
-///
-/// - number (float,int): The number to convert
-/// - ..args (any): Passed to @@format-float()
 /// -> str
-#let format-usd(number, ..args) = {
+#let format-usd(
+  /// The number to convert -> float | int
+  number,
+  /// Passed to @format-float() -> any
+  ..args,
+) = {
   // "negative" sign if needed
   if args.pos().len() > 0 {
     panic("format-usd() does not accept positional arguments")
   }
-  let sign = if number < 0 {str.from-unicode(0x2212)} else {""}
+  let sign = if number < 0 { str.from-unicode(0x2212) } else { "" }
   let currency = "$"
   [#sign#currency]
   let named = (precision: 2, pad: true, ..args.named())
@@ -124,18 +128,15 @@
   }
 }
 
-#let title-case(field) = field.replace("-", " ").split(" ").map(
-  word => upper(word.at(0)) + word.slice(1)
-).join(" ")
+#let title-case(field) = field.replace("-", " ").split(" ").map(word => upper(word.at(0)) + word.slice(1)).join(" ")
 
 
-#let _field-info-to-tablex-kwargs(field-info) = {
+#let _field-info-to-table-kwargs(field-info) = {
   let get-eval(dict, key, default) = {
     let value = dict.at(key, default: default)
     if type(value) == "string" {
       eval(value)
-    }
-    else {
+    } else {
       value
     }
   }
@@ -156,11 +157,12 @@
     aligns.push(get-eval(info, "align", default-align))
     widths.push(get-eval(info, "width", auto))
   }
-  // Keys correspond to tablex specs other than "names" which is positional
+  // Keys correspond to table specs other than "names" which is positional
   (names: names, align: aligns, columns: widths)
 }
 
-/// Converts a @@TableData into a `tablex` table. This is the main (and only intended)
+
+/// Converts a @TableData into a displayed `table`. This is the main (and only intended)
 /// way of rendering `tada` data. Most keywords can be overridden for customizing the
 /// output.
 ///
@@ -168,33 +170,34 @@
 /// #let td = TableData(
 ///   data: (a: (1, 2), b: (3, 4)),
 /// // Tables can carry their own kwargs, too
-///   tablex-kwargs: (inset: (x: 3em, y: 0.5em))
+///   table-kwargs: (inset: (x: 3em, y: 0.5em))
 /// )
-/// #to-tablex(td, fill: red)
+/// #to-table(td, fill: red)
 /// ```
-///
-/// - td (TableData): The data to render
-/// - ..tablex-kwargs (any): Passed to `tablex`
-#let to-tablex(td, tablex-version: "0.0.6", ..tablex-kwargs) = {
-  import "@preview/tablex:" + tablex-version: tablex, cellx, rowspanx
-
+/// -> content
+#let to-table(
+  /// The data to render -> TableData
+  td,
+  /// Passed to `table` -> any
+  ..kwargs,
+) = {
   let (field-info, type-info) = (td.field-info, td.type-info)
   // Order by field specification
-  let to-show = field-info.keys().filter(
-    key => not field-info.at(key).at("hide", default: false)
-  )
+  let to-show = field-info.keys().filter(key => not field-info.at(key).at("hide", default: false))
   let subset = H.keep-keys(td.data, keys: to-show)
   // Make sure field info matches data order
   field-info = H.keep-keys(field-info, keys: subset.keys(), reorder: true)
-  let display-columns = subset.pairs().map(key-column => {
-    let (key, column) = key-column
-    column.map(value => _value-to-display(value, field-info.at(key)))
-  })
+  let display-columns = subset
+    .pairs()
+    .map(key-column => {
+      let (key, column) = key-column
+      column.map(value => _value-to-display(value, field-info.at(key)))
+    })
   let rows = H.transpose-values(display-columns)
 
-  let col-spec = _field-info-to-tablex-kwargs(field-info)
+  let col-spec = _field-info-to-table-kwargs(field-info)
   let names = col-spec.remove("names")
   // We don't want a completely flattened array, since some cells may contain many values.
   // So use sum() to join rows together instead
-  tablex(..td.tablex-kwargs, ..col-spec, ..tablex-kwargs, ..names, ..rows.sum())
+  table(..td.table-kwargs, ..col-spec, ..kwargs, ..names, ..rows.sum().map(x => [#x]))
 }

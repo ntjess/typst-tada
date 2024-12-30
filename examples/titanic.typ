@@ -1,3 +1,4 @@
+
 // https://github.com/ntjess/showman.git
 #import "@local/showman:0.1.0": runner, formatter
 
@@ -9,7 +10,7 @@
   theme: "dark",
   eval-kwargs: (
     scope: (tada: tada, csv: local-csv),
-    eval-prefix: "#let to-tablex(it) = output(tada.to-tablex(it))",
+    eval-prefix: "#let to-table(it) = output(tada.to-table(it))",
     direction: ltr,
   ),
 )
@@ -69,7 +70,7 @@ print(df.head(5))
     subset.with(
       fields: ("Name", "Age", "Fare"), indexes: range(3)
     ),
-    to-tablex
+    to-table
   )
 ]
 ```
@@ -86,9 +87,9 @@ print(df.head(5))
   row.map(cell => (..cell, fill: fill))
 }
 #let title-fmt(name) = heading(outlined: false, name)
-#td.tablex-kwargs.insert("map-rows", row-fmt)
+#td.table-kwargs.insert("map-rows", row-fmt)
 #td.field-defaults.insert("title", title-fmt)
-#to-tablex(subset(td, fields: ("Name", "Age", "Fare"), indexes: range(0, 5)))
+#to-table(subset(td, fields: ("Name", "Age", "Fare"), indexes: range(0, 5)))
 ```
 
 == Convert types & clean data
@@ -112,12 +113,12 @@ print(df.head(5))
   ),
   sort-values.with(by: "Fare", descending: true),
 )
-#to-tablex(subset(td, indexes: range(0, 10)))
+#to-table(subset(td, indexes: range(0, 10)))
 ```
 
 == Find just the passengers over 30 paying over \$230
 ```globalexample
-#to-tablex(filter(td, expression: `Age > 30 and Fare > 230`))
+#to-table(filter(td, expression: `Age > 30 and Fare > 230`))
 ```
 
 == See how much each class paid and their average age
@@ -131,5 +132,5 @@ print(df.head(5))
   ),
   field-info: ("Total Fare": (display: usd)),
 )
-#to-tablex(fares-per-class)
+#to-table(fares-per-class)
 ```
